@@ -1,76 +1,27 @@
-import * as THREE from 'three'
-import { Clock, PhysicsWorld, Renderer, getEngineInfo } from '@mii-engine/core'
-
-console.log(getEngineInfo())
-
 const statsEl = document.getElementById('stats')!
+const titleEl = document.getElementById('demo-title')!
 
-const renderer = new Renderer({
-  width: window.innerWidth,
-  height: window.innerHeight,
-})
-document.body.appendChild(renderer.getDomElement())
+const params = new URLSearchParams(window.location.search)
+const demo = params.get('demo') ?? '02'
 
-window.addEventListener('resize', () => {
-  renderer.resize(window.innerWidth, window.innerHeight)
-})
-
-const world = await PhysicsWorld.create()
-const clock = new Clock({ fixedStep: 1 / 60, maxStepsPerFrame: 10 })
-
-renderer.addGround(400, 20)
-world.createGround(200, 10)
-
-const balls: Array<{ body: ReturnType<PhysicsWorld['createDynamicBall']>; mesh: THREE.Mesh }> = []
-
-for (let i = 0; i < 5; i++) {
-  const x = (i - 2) * 3
-  const y = 5 + i * 2
-  const radius = 0.4 + Math.random() * 0.3
-  const color = new THREE.Color().setHSL(i / 5, 0.8, 0.6)
-
-  const body = world.createDynamicBall({ x, y, z: 0 }, radius, 1)
-
-  const geo = new THREE.SphereGeometry(radius, 16, 16)
-  const mat = new THREE.MeshLambertMaterial({ color })
-  const mesh = new THREE.Mesh(geo, mat)
-  mesh.castShadow = true
-
-  renderer.addMesh(mesh)
-  balls.push({ body, mesh })
+const demos: Record<string, string> = {
+  '01': 'Demo 01 — Physique de base (balles)',
+  '02': 'Demo 02 — Squelette humanoïde',
 }
 
-clock.start()
+titleEl.textContent = demos[demo] ?? `Demo ${demo}`
 
-let frameCount = 0
-let lastFpsTime = performance.now()
-let fps = 0
-
-function animate(nowMs: number) {
-  requestAnimationFrame(animate)
-
-  clock.tick(nowMs, (dt) => {
-    world.step(dt)
-  })
-
-  for (const { body, mesh } of balls) {
-    const pos = body.translation()
-    mesh.position.set(pos.x, pos.y, pos.z)
-    const rot = body.rotation()
-    mesh.quaternion.set(rot.x, rot.y, rot.z, rot.w)
+switch (demo) {
+  case '01': {
+    const { runDemo01 } = await import('./demos/demo-01-physics.js')
+    await runDemo01(statsEl)
+    break
   }
-
-  frameCount++
-  const now = performance.now()
-  if (now - lastFpsTime >= 1000) {
-    fps = frameCount
-    frameCount = 0
-    lastFpsTime = now
+  case '02': {
+    const { runDemo02 } = await import('./demos/demo-02-skeleton.js')
+    await runDemo02(statsEl)
+    break
   }
-
-  statsEl.textContent = `FPS: ${fps} | Steps: ${clock.getStepCount()} | Balles: ${balls.length}`
-
-  renderer.render()
+  default:
+    statsEl.textContent = `Demo "${demo}" introuvable. Utilise ?demo=01 ou ?demo=02`
 }
-
-requestAnimationFrame(animate)

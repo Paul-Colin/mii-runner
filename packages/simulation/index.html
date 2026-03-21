@@ -2,12 +2,12 @@
 <html lang="fr">
   <head>
     <meta charset="UTF-8" />
-    <title>Mii Engine — Demo</title>
+    <title>Mii Engine — Demos</title>
     <style>
       * { margin: 0; padding: 0; box-sizing: border-box; }
       body { background: #000; overflow: hidden; }
       canvas { display: block; }
-      #info {
+      #hud {
         position: absolute;
         top: 12px;
         left: 12px;
@@ -17,14 +17,38 @@
         background: rgba(0,0,0,0.5);
         padding: 8px 12px;
         border-radius: 6px;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
       }
+      #nav {
+        position: absolute;
+        top: 12px;
+        right: 12px;
+        display: flex;
+        gap: 8px;
+      }
+      #nav a {
+        color: #fff;
+        font-family: monospace;
+        font-size: 12px;
+        background: rgba(255,255,255,0.15);
+        padding: 6px 10px;
+        border-radius: 4px;
+        text-decoration: none;
+      }
+      #nav a:hover { background: rgba(255,255,255,0.3); }
     </style>
   </head>
   <body>
-    <div id="info">
-      <div>Mii Engine v1.0 — Demo physique</div>
-      <div id="stats">Chargement...</div>
+    <div id="hud">
+      <div id="demo-title">Chargement...</div>
+      <div id="stats"></div>
     </div>
+    <nav id="nav">
+      <a href="?demo=01">Demo 01</a>
+      <a href="?demo=02">Demo 02</a>
+    </nav>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>
