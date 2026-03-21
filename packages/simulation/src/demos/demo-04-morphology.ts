@@ -1,6 +1,6 @@
 import * as THREE from 'three'
-import { Clock, PhysicsWorld, Renderer, Skeleton, getEngineInfo } from '@mii-engine/core'
-import { validateMorphology, getArchetype } from '@mii-engine/core'
+import { Clock, PhysicsWorld, Renderer, Skeleton, getEngineInfo, validateMorphology, getArchetype } from '@mii-engine/core'
+import { setupFreeCamera } from '../helpers/setupFreeCamera.js'
 
 export async function runDemo04(statsEl: HTMLElement): Promise<void> {
   console.log(getEngineInfo())
@@ -25,10 +25,12 @@ export async function runDemo04(statsEl: HTMLElement): Promise<void> {
   camera.position.set(0, 3, 12)
   camera.lookAt(0, 1.5, 0)
 
+  const freeCamera = setupFreeCamera(renderer)
+
   const morphologies = [
-    { height: 1.50, weight: 45, muscle: 0.6,  x: -5, label: 'Petit vif' },
-    { height: 1.75, weight: 75, muscle: 1.0,  x:  0, label: 'Athlète équilibré' },
-    { height: 1.95, weight: 110, muscle: 1.8, x:  5, label: 'Tank musclé' },
+    { height: 1.50, weight: 45, muscle: 0.6,  x: -5 },
+    { height: 1.75, weight: 75, muscle: 1.0,  x:  0 },
+    { height: 1.95, weight: 110, muscle: 1.8, x:  5 },
   ]
 
   const skeletons: Skeleton[] = []
@@ -85,7 +87,7 @@ export async function runDemo04(statsEl: HTMLElement): Promise<void> {
   function worldToScreen(pos: THREE.Vector3): { x: number; y: number } {
     const projected = pos.clone().project(renderer.getCamera())
     return {
-      x: (projected.x  *  0.5 + 0.5) * canvas.clientWidth,
+      x: ( projected.x * 0.5 + 0.5) * canvas.clientWidth,
       y: (-projected.y * 0.5 + 0.5) * canvas.clientHeight,
     }
   }
@@ -94,6 +96,7 @@ export async function runDemo04(statsEl: HTMLElement): Promise<void> {
     requestAnimationFrame(animate)
 
     clock.tick(nowMs, (dt) => {
+      freeCamera.update(dt)
       world.step(dt)
     })
 
@@ -102,13 +105,16 @@ export async function runDemo04(statsEl: HTMLElement): Promise<void> {
       skeleton.syncMeshes()
 
       const hip = skeleton.getSegment('hip')
-      if (hip) {
+      if (hip && !freeCamera.isEnabled()) {
         const pos = hip.getPosition()
         const worldPos = new THREE.Vector3(pos.x, pos.y + 1.2, pos.z)
         const screen = worldToScreen(worldPos)
         const label = labels[i]!
-        label.style.left = `${screen.x - 80}px`
-        label.style.top  = `${screen.y - 20}px`
+        label.style.left    = `${screen.x - 80}px`
+        label.style.top     = `${screen.y - 20}px`
+        label.style.display = 'block'
+      } else {
+        labels[i]!.style.display = 'none'
       }
     }
 
@@ -120,7 +126,7 @@ export async function runDemo04(statsEl: HTMLElement): Promise<void> {
       lastFpsTime = now
     }
 
-    statsEl.textContent = `FPS: ${fps} | ${skeletons.length} personnages`
+    statsEl.textContent = `FPS: ${fps} | ${skeletons.length} personnages | FreeCam: ${freeCamera.isEnabled() ? 'ON' : 'OFF'}`
     renderer.render()
   }
 

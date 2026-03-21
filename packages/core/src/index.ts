@@ -30,3 +30,6 @@ export type { MorphologyConfig, MorphologyInput, MorphologyConstraints } from '.
 
 export { buildSkeletonDef } from './character/SkeletonConfig.js'
 export type { SkeletonDef, SegmentDef, JointDef } from './character/SkeletonConfig.js'
+
+export { FreeCamera } from './engine/FreeCamera.js'
+export type { FreeCameraOptions } from './engine/FreeCamera.js'
