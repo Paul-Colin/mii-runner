@@ -1,13 +1,14 @@
-const statsEl  = document.getElementById('stats')!
-const titleEl  = document.getElementById('demo-title')!
+const statsEl = document.getElementById('stats')!
+const titleEl = document.getElementById('demo-title')!
 
 const params = new URLSearchParams(window.location.search)
-const demo   = params.get('demo') ?? '03'
+const demo   = params.get('demo') ?? '04'
 
 const demos: Record<string, string> = {
-  '01': 'Demo 01 — Physique de base (balles)',
+  '01': 'Demo 01 — Physique de base',
   '02': 'Demo 02 — Squelette humanoïde',
   '03': 'Demo 03 — Muscles & énergie',
+  '04': 'Demo 04 — Morphologie T/P/M',
 }
 
 titleEl.textContent = demos[demo] ?? `Demo ${demo}`
@@ -26,6 +27,11 @@ switch (demo) {
   case '03': {
     const { runDemo03 } = await import('./demos/demo-03-muscles.js')
     await runDemo03(statsEl)
+    break
+  }
+  case '04': {
+    const { runDemo04 } = await import('./demos/demo-04-morphology.js')
+    await runDemo04(statsEl)
     break
   }
   default:

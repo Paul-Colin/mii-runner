@@ -25,5 +25,8 @@ export type { EnergySystemOptions } from './character/EnergySystem.js'
 export { Muscle } from './character/Muscle.js'
 export type { MuscleOptions, MuscleDirection } from './character/Muscle.js'
 
+export { validateMorphology, getArchetype } from './character/MorphologyConfig.js'
+export type { MorphologyConfig, MorphologyInput, MorphologyConstraints } from './character/MorphologyConfig.js'
+
 export { buildSkeletonDef } from './character/SkeletonConfig.js'
 export type { SkeletonDef, SegmentDef, JointDef } from './character/SkeletonConfig.js'
