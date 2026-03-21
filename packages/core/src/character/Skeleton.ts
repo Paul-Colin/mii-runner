@@ -180,4 +180,10 @@ export class Skeleton {
     this.segments.clear()
     this.joints.length = 0
   }
+
+  getJointByName(name: string): import('@dimforge/rapier3d-compat').ImpulseJoint | undefined {
+    const idx = this.def.joints.findIndex(j => j.name === name)
+    if (idx === -1) return undefined
+    return this.joints[idx]
+  }
 }

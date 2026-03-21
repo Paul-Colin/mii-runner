@@ -16,5 +16,14 @@ export type { RendererOptions } from './engine/Renderer.js'
 export { Skeleton } from './character/Skeleton.js'
 export type { SkeletonOptions } from './character/Skeleton.js'
 
+export { MuscleSystem } from './character/MuscleSystem.js'
+export type { MuscleSystemOptions } from './character/MuscleSystem.js'
+
+export { EnergySystem } from './character/EnergySystem.js'
+export type { EnergySystemOptions } from './character/EnergySystem.js'
+
+export { Muscle } from './character/Muscle.js'
+export type { MuscleOptions, MuscleDirection } from './character/Muscle.js'
+
 export { buildSkeletonDef } from './character/SkeletonConfig.js'
 export type { SkeletonDef, SegmentDef, JointDef } from './character/SkeletonConfig.js'
