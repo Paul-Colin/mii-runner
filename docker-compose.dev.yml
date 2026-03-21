@@ -1,0 +1,33 @@
+services:
+  simulation:
+    build:
+      context: ./packages/simulation
+      target: dev
+    command: npm run dev
+    ports:
+      - "3000:3000"
+      - "3001:3001"
+    environment:
+      - DATABASE_URL=postgresql://mii:mii@postgres:5432/miidb
+      - WS_PORT=3001
+      - NODE_ENV=development
+    volumes:
+      - ./packages/simulation/src:/app/src
+      - ./assets:/app/assets
+
+  dashboard:
+    build:
+      context: ./packages/dashboard
+      target: dev
+    command: npm run dev -- --host
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_WS_URL=ws://localhost:3001
+      - VITE_API_URL=http://localhost:3000
+    volumes:
+      - ./packages/dashboard/src:/app/src
+
+  postgres:
+    ports:
+      - "5432:5432"

@@ -1,0 +1,92 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Simulation {
+  id              String       @id @default(uuid())
+  name            String
+  seed            BigInt
+  populationSize  Int
+  maxGenerations  Int
+  mutationRate    Float
+  eliteRatio      Float
+  tMaxSeconds     Int
+  fitnessWeights  Json
+  physicsConfig   Json
+  status          SimStatus    @default(PENDING)
+  createdAt       DateTime     @default(now())
+  generations     Generation[]
+  individuals     Individual[]
+}
+
+model Generation {
+  id               String      @id @default(uuid())
+  simulationId     String
+  generationNumber Int
+  bestFitness      Float
+  avgFitness       Float
+  worstFitness     Float
+  avgHeight        Float
+  avgWeight        Float
+  avgMuscle        Float
+  geneticVariance  Float
+  survivorsCount   Int
+  bestTimeSeconds  Float?
+  simulatedAt      DateTime    @default(now())
+  simulation       Simulation  @relation(fields: [simulationId], references: [id])
+  individuals      Individual[]
+}
+
+model Individual {
+  id               String      @id @default(uuid())
+  simulationId     String
+  generationId     String
+  parentAId        String?
+  parentBId        String?
+  generationNumber Int
+  isElite          Boolean     @default(false)
+  height           Float
+  weight           Float
+  muscleCoef       Float
+  genomeBehavior   Json
+  miiAppearance    Json
+  fitness          Float
+  distanceM        Float
+  timeSeconds      Float?
+  timeUprightS     Float
+  energyUsed       Float
+  finishedRace     Boolean     @default(false)
+  fell             Boolean     @default(false)
+  createdAt        DateTime    @default(now())
+  simulation       Simulation  @relation(fields: [simulationId], references: [id])
+  generation       Generation  @relation(fields: [generationId], references: [id])
+  parentA          Individual? @relation("ParentA", fields: [parentAId], references: [id])
+  parentB          Individual? @relation("ParentB", fields: [parentBId], references: [id])
+  childrenA        Individual[] @relation("ParentA")
+  childrenB        Individual[] @relation("ParentB")
+  runStats         RunStats?
+}
+
+model RunStats {
+  id                String     @id @default(uuid())
+  individualId      String     @unique
+  generationId      String
+  energyCurve       Json
+  positionSnapshots Json
+  maxSpeedMs        Float
+  avgStrideLength   Float
+  fallTimeMs        Int?
+  individual        Individual @relation(fields: [individualId], references: [id])
+}
+
+enum SimStatus {
+  PENDING
+  RUNNING
+  PAUSED
+  COMPLETED
+  ABORTED
+}

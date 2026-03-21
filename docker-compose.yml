@@ -1,0 +1,48 @@
+services:
+  simulation:
+    build:
+      context: ./packages/simulation
+      target: production
+    ports:
+      - "3000:3000"
+      - "3001:3001"
+    environment:
+      - DATABASE_URL=postgresql://mii:mii@postgres:5432/miidb
+      - WS_PORT=3001
+      - NODE_ENV=production
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./assets:/app/assets:ro
+      - saves:/app/saves
+
+  dashboard:
+    build:
+      context: ./packages/dashboard
+      target: production
+    ports:
+      - "5173:80"
+    environment:
+      - VITE_WS_URL=ws://localhost:3001
+      - VITE_API_URL=http://localhost:3000
+    depends_on:
+      - simulation
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: mii
+      POSTGRES_PASSWORD: mii
+      POSTGRES_DB: miidb
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mii -d miidb"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  pg_data:
+  saves:
