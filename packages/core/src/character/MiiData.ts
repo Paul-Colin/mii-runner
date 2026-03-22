@@ -131,11 +131,15 @@ export const DEFAULT_MII_DATA: MiiData = {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Utilitaire : entier aléatoire dans [min, max] inclus
+// Utilitaires
 // ─────────────────────────────────────────────────────────────────────────────
-
+ 
 function ri(min: number, max: number): number {
   return Math.floor(Math.random() * (max - min + 1)) + min
+}
+ 
+function clamp(v: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, v))
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -190,9 +194,9 @@ export function randomMiiData(nameSuffix?: string): MiiData {
     mouthHorizontalStretch: ri(0, 6),
     mouthYPosition:         ri(0, 18),
 
-    mustacheType:      Math.random() < 0.1 ? ri(1, 5) : 0,
-    beardType:         Math.random() < 0.1 ? ri(1, 5) : 0,
-    facialHairColor:   ri(0, 7),
+    mustacheType:      gender === 0 && Math.random() < 0.1 ? ri(1, 5) : 0,
+    beardType:         gender === 0 && Math.random() < 0.1 ? ri(1, 5) : 0,
+    facialHairColor:   gender === 0 ? ri(0, 7) : 0,
     mustacheScale:     ri(0, 8),
     mustacheYPosition: ri(0, 16),
 
@@ -209,36 +213,155 @@ export function randomMiiData(nameSuffix?: string): MiiData {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Générateur COHÉRENT — positionnement facial anatomiquement correct
+//
+// Dans le FFSD, position Y : 0 = haut du visage, 18 = bas du visage
+// Ordre vertical garanti : sourcils < yeux < nez < bouche
+//
+// Zones utilisées :
+//   Sourcils  : eyebrowY ∈ [3,  9]
+//   Yeux      : eyeY     ∈ [eyebrowY+1, 13]
+//   Nez       : noseY    ∈ [eyeY+1, 15]
+//   Bouche    : mouthY   ∈ [noseY+2, 18]
+//
+// Note mustacheYPosition : INVERSÉ (0 = bas visage, 16 = haut visage)
+//   → pour placer la moustache entre nez et bouche, on utilise [8, 14]
+// ─────────────────────────────────────────────────────────────────────────────
+
+export function coherentMiiData(gender?: number, nameSuffix?: string): MiiData {
+  const g = gender !== undefined ? gender : ri(0, 1)
+
+  // ── Couleurs cohérentes ────────────────────────────────────────────────────
+  const skinColor = ri(0, 5)
+  const hairColor = ri(0, 7)
+  // Sourcils souvent de la même couleur que les cheveux
+  const browColor = Math.random() < 0.7 ? hairColor : ri(0, 7)
+
+  // ── Positions Y garanties de haut en bas ───────────────────────────────────
+  const eyebrowY = ri(3, 9)
+  const eyeY     = clamp(ri(eyebrowY + 1, eyebrowY + 5), eyebrowY + 1, 13)
+  const noseY    = clamp(ri(eyeY + 1, eyeY + 4),         eyeY + 1,     15)
+  const mouthY   = clamp(ri(noseY + 2, 18),              noseY + 2,    18)
+
+  // ── Espacement horizontal cohérent ────────────────────────────────────────
+  // eyeSpacing modéré : évite les yeux collés ou trop écartés
+  const eyeSpacing  = ri(1, 6)
+  const browSpacing = clamp(eyeSpacing + ri(-1, 1), 0, 12)
+
+  // ── Moustache masculine — entre nez et bouche ──────────────────────────────
+  // mustacheYPosition est INVERSÉ : valeur haute = visuellement haut
+  const hasMustache  = g === 0 && Math.random() < 0.2
+  const mustacheType = hasMustache ? ri(1, 5) : 0
+  const mustacheY    = hasMustache ? ri(8, 14) : 10
+
+  const hasBeard  = g === 0 && Math.random() < 0.15
+  const beardType = hasBeard ? ri(1, 5) : 0
+
+  // ── Maquillage féminin ────────────────────────────────────────────────────
+  const makeupType = g === 1 && Math.random() < 0.45 ? ri(1, 11) : 0
+
+  // ── Lunettes — positionnées au niveau des yeux ────────────────────────────
+  const hasGlasses = Math.random() < 0.2
+  // glassesYPosition ∈ [0, 20], eyeY ∈ [0, 18] → mapping proportionnel
+  const glassesY   = hasGlasses ? clamp(Math.round(eyeY * 1.1), 0, 20) : 10
+
+  // ── Échelles raisonnables (évite les valeurs extrêmes) ────────────────────
+  const eyeScale   = ri(2, 6)
+  const browScale  = ri(2, 6)
+  const noseScale  = ri(2, 6)
+  const mouthScale = ri(2, 6)
+
+  return {
+    miiName:       nameSuffix ? `Mii${nameSuffix}` : 'Mii',
+    creatorName:   '',
+    gender:        g,
+    birthMonth:    0,
+    birthDay:      0,
+    favoriteColor: ri(0, 11),
+    favorite:      false,
+    height:        ri(0, 127),
+    build:         ri(0, 127),
+
+    faceType:     ri(0, 11),
+    skinColor,
+    wrinklesType: Math.random() < 0.1 ? ri(1, 11) : 0,
+    makeupType,
+
+    hairType:  ri(0, 131),
+    hairColor,
+    flipHair:  Math.random() < 0.3,
+
+    eyeType:             ri(0, 59),
+    eyeColor:            ri(0, 5),
+    eyeScale,
+    eyeVerticalStretch:  ri(1, 5),
+    eyeRotation:         ri(2, 6),
+    eyeSpacing,
+    eyeYPosition:        eyeY,
+
+    eyebrowType:             ri(0, 24),
+    eyebrowColor:            browColor,
+    eyebrowScale:            browScale,
+    eyebrowVerticalStretch:  ri(1, 5),
+    eyebrowRotation:         ri(3, 9),
+    eyebrowSpacing:          browSpacing,
+    eyebrowYPosition:        eyebrowY,
+
+    noseType:      ri(0, 17),
+    noseScale,
+    noseYPosition: noseY,
+
+    mouthType:              ri(0, 35),
+    mouthColor:             g === 1 ? ri(0, 4) : 0,
+    mouthScale,
+    mouthHorizontalStretch: ri(1, 5),
+    mouthYPosition:         mouthY,
+
+    mustacheType,
+    beardType:              g === 1 ? 0 : beardType, // ← femmes sans barbe
+    facialHairColor:        g === 0 ? browColor : 0,
+    mustacheScale:     hasMustache ? ri(2, 6) : 4,
+    mustacheYPosition: mustacheY,
+
+    glassesType:      hasGlasses ? ri(1, 8) : 0,
+    glassesColor:     ri(0, 5),
+    glassesScale:     ri(2, 6),
+    glassesYPosition: glassesY,
+
+    moleEnabled:   Math.random() < 0.08,
+    moleScale:     ri(1, 5),
+    moleXPosition: ri(0, 16),
+    moleYPosition: ri(15, 28),
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Crossover visuel pour l'algo génétique (Phase 2)
 // ─────────────────────────────────────────────────────────────────────────────
 
 export function crossoverMiiData(a: MiiData, b: MiiData): MiiData {
-  function pick<T>(va: T, vb: T): T {
-    return Math.random() < 0.5 ? va : vb
-  }
+  function pick<T>(va: T, vb: T): T { return Math.random() < 0.5 ? va : vb }
   const mutate = (val: number, min: number, max: number): number =>
     Math.random() < 0.05 ? ri(min, max) : val
+
+  const outGender = pick(a.gender, b.gender)
 
   return {
     miiName:       pick(a.miiName, b.miiName),
     creatorName:   '',
-    gender:        pick(a.gender, b.gender),
-    birthMonth:    0,
-    birthDay:      0,
+    gender:        outGender,
+    birthMonth:    0, birthDay: 0,
     favoriteColor: pick(a.favoriteColor, b.favoriteColor),
     favorite:      false,
     height:        pick(a.height, b.height),
     build:         pick(a.build, b.build),
-
     faceType:      pick(a.faceType, b.faceType),
     skinColor:     Math.round((a.skinColor + b.skinColor) / 2),
     wrinklesType:  pick(a.wrinklesType, b.wrinklesType),
     makeupType:    pick(a.makeupType, b.makeupType),
-
     hairType:      pick(a.hairType, b.hairType),
     hairColor:     mutate(pick(a.hairColor, b.hairColor), 0, 7),
     flipHair:      pick(a.flipHair, b.flipHair),
-
     eyeType:             pick(a.eyeType, b.eyeType),
     eyeColor:            pick(a.eyeColor, b.eyeColor),
     eyeScale:            pick(a.eyeScale, b.eyeScale),
@@ -246,7 +369,6 @@ export function crossoverMiiData(a: MiiData, b: MiiData): MiiData {
     eyeRotation:         pick(a.eyeRotation, b.eyeRotation),
     eyeSpacing:          pick(a.eyeSpacing, b.eyeSpacing),
     eyeYPosition:        pick(a.eyeYPosition, b.eyeYPosition),
-
     eyebrowType:             pick(a.eyebrowType, b.eyebrowType),
     eyebrowColor:            pick(a.eyebrowColor, b.eyebrowColor),
     eyebrowScale:            pick(a.eyebrowScale, b.eyebrowScale),
@@ -254,28 +376,23 @@ export function crossoverMiiData(a: MiiData, b: MiiData): MiiData {
     eyebrowRotation:         pick(a.eyebrowRotation, b.eyebrowRotation),
     eyebrowSpacing:          pick(a.eyebrowSpacing, b.eyebrowSpacing),
     eyebrowYPosition:        Math.max(3, pick(a.eyebrowYPosition, b.eyebrowYPosition)),
-
     noseType:      pick(a.noseType, b.noseType),
     noseScale:     pick(a.noseScale, b.noseScale),
     noseYPosition: pick(a.noseYPosition, b.noseYPosition),
-
     mouthType:              pick(a.mouthType, b.mouthType),
     mouthColor:             pick(a.mouthColor, b.mouthColor),
     mouthScale:             pick(a.mouthScale, b.mouthScale),
     mouthHorizontalStretch: pick(a.mouthHorizontalStretch, b.mouthHorizontalStretch),
     mouthYPosition:         pick(a.mouthYPosition, b.mouthYPosition),
-
     mustacheType:      pick(a.mustacheType, b.mustacheType),
     beardType:         pick(a.beardType, b.beardType),
     facialHairColor:   pick(a.facialHairColor, b.facialHairColor),
     mustacheScale:     pick(a.mustacheScale, b.mustacheScale),
     mustacheYPosition: pick(a.mustacheYPosition, b.mustacheYPosition),
-
     glassesType:      pick(a.glassesType, b.glassesType),
     glassesColor:     pick(a.glassesColor, b.glassesColor),
     glassesScale:     pick(a.glassesScale, b.glassesScale),
     glassesYPosition: pick(a.glassesYPosition, b.glassesYPosition),
-
     moleEnabled:   pick(a.moleEnabled, b.moleEnabled),
     moleScale:     pick(a.moleScale, b.moleScale),
     moleXPosition: pick(a.moleXPosition, b.moleXPosition),

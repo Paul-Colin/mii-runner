@@ -37,7 +37,7 @@ export type { SkeletonDef, SegmentDef, JointDef } from './character/SkeletonConf
 export { MiiLoader, miiDataToHex, miiDataToBuffer } from './character/MiiLoader.js'
 export type { MiiLoaderOptions, MiiInstance }       from './character/MiiLoader.js'
  
-export { DEFAULT_MII_DATA, randomMiiData, crossoverMiiData } from './character/MiiData.js'
+export { DEFAULT_MII_DATA, randomMiiData, coherentMiiData, crossoverMiiData } from './character/MiiData.js'
 export type { MiiData } from './character/MiiData.js'
 
 export { FreeCamera } from './engine/FreeCamera.js'

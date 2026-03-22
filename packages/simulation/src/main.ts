@@ -40,6 +40,12 @@ switch (demo) {
     await runDemo05(statsEl)
     break
   }
+  case '06': {
+    const { runDemo06 } = await import('./demos/demo-06-coherent.js')
+    await runDemo06(statsEl)
+    break
+  }
+  
 
   default:
     statsEl.textContent = `Demo "${demo}" introuvable.`
