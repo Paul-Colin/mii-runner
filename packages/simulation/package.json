@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@mii-engine/core": "*",
+    "buffer": "^6.0.3",
     "three": "^0.183.2"
   },
   "devDependencies": {

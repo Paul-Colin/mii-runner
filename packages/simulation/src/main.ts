@@ -9,6 +9,7 @@ const demos: Record<string, string> = {
   '02': 'Demo 02 — Squelette humanoïde',
   '03': 'Demo 03 — Muscles & énergie',
   '04': 'Demo 04 — Morphologie T/P/M',
+  '05': 'Demo 05 — Mii Loader',
 }
 
 titleEl.textContent = demos[demo] ?? `Demo ${demo}`
@@ -34,6 +35,12 @@ switch (demo) {
     await runDemo04(statsEl)
     break
   }
+  case '05': {
+    const { runDemo05 } = await import('./demos/demo-05-mii.js')
+    await runDemo05(statsEl)
+    break
+  }
+
   default:
     statsEl.textContent = `Demo "${demo}" introuvable.`
 }

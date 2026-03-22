@@ -18,6 +18,7 @@
   },
   "dependencies": {
     "@dimforge/rapier3d-compat": "^0.19.3",
+    "@pretendonetwork/mii-js": "^1.0.10",
     "three": "^0.183.2"
   }
 }

@@ -31,5 +31,15 @@ export type { MorphologyConfig, MorphologyInput, MorphologyConstraints } from '.
 export { buildSkeletonDef } from './character/SkeletonConfig.js'
 export type { SkeletonDef, SegmentDef, JointDef } from './character/SkeletonConfig.js'
 
+// export { MiiLoader, miiDataToHex, hexToMiiData } from './character/MiiLoader.js'
+// export type { MiiLoaderOptions, MiiInstance }    from './character/MiiLoader.js'
+
+export { MiiLoader, miiDataToHex, miiDataToBuffer } from './character/MiiLoader.js'
+export type { MiiLoaderOptions, MiiInstance }       from './character/MiiLoader.js'
+ 
+export { DEFAULT_MII_DATA, randomMiiData, crossoverMiiData } from './character/MiiData.js'
+export type { MiiData } from './character/MiiData.js'
+
 export { FreeCamera } from './engine/FreeCamera.js'
 export type { FreeCameraOptions } from './engine/FreeCamera.js'
+
