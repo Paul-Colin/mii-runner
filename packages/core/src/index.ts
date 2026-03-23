@@ -31,14 +31,19 @@ export type { MorphologyConfig, MorphologyInput, MorphologyConstraints } from '.
 export { buildSkeletonDef } from './character/SkeletonConfig.js'
 export type { SkeletonDef, SegmentDef, JointDef } from './character/SkeletonConfig.js'
 
-// export { MiiLoader, miiDataToHex, hexToMiiData } from './character/MiiLoader.js'
-// export type { MiiLoaderOptions, MiiInstance }    from './character/MiiLoader.js'
-
-export { MiiLoader, miiDataToHex, miiDataToBuffer } from './character/MiiLoader.js'
-export type { MiiLoaderOptions, MiiInstance }       from './character/MiiLoader.js'
+export { MiiHeadLoader, miiDataToHex, miiDataToBuffer } from './character/MiiHeadLoader.js'
+export type { MiiHeadLoaderOptions, MiiHeadInstance }       from './character/MiiHeadLoader.js'
  
 export { DEFAULT_MII_DATA, randomMiiData, coherentMiiData, crossoverMiiData } from './character/MiiData.js'
 export type { MiiData } from './character/MiiData.js'
+
+// MiiBodyLoader (charge le corps GLB statique + scaling T/P/M)
+export { MiiBodyLoader } from './character/MiiBodyLoader.js'
+export type { MiiBodyOptions, MiiBodyInstance, BodyStyle } from './character/MiiBodyLoader.js'
+ 
+// MiiLoader (orchestrateur : tête + corps → Mii complet)
+export { MiiLoader } from './character/MiiLoader.js'
+export type { MiiLoaderOptions, MiiInstance } from './character/MiiLoader.js'
 
 export { FreeCamera } from './engine/FreeCamera.js'
 export type { FreeCameraOptions } from './engine/FreeCamera.js'

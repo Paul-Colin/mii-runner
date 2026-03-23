@@ -1,7 +1,7 @@
 // packages/simulation/src/demos/demo-06-coherent.ts
 import * as THREE from 'three'
 import { Renderer, getEngineInfo } from '@mii-engine/core'
-import { MiiLoader, coherentMiiData } from '@mii-engine/core'
+import { MiiHeadLoader, coherentMiiData } from '@mii-engine/core'
 import type { MiiInstance } from '@mii-engine/core'
 import { setupFreeCamera } from '../helpers/setupFreeCamera.js'
 
@@ -37,7 +37,7 @@ export async function runDemo06(statsEl: HTMLElement): Promise<void> {
   const freeCamera = setupFreeCamera(renderer)
   renderer.addGround(40, 10)
 
-  const loader = new MiiLoader(scene, {
+  const loader = new MiiHeadLoader(scene, {
     shaderType:    'wiiu',
     texResolution: 512,
     scale:         MII_SCALE,

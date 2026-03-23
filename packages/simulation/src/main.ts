@@ -45,6 +45,11 @@ switch (demo) {
     await runDemo06(statsEl)
     break
   }
+  case '07': {
+    const { runDemo07 } = await import('./demos/demo-07-mii-full.js')
+    await runDemo07(statsEl)
+    break
+  }
   
 
   default:

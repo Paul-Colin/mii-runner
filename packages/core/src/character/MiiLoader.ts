@@ -1,304 +1,172 @@
+/**
+ * MiiLoader — orchestre MiiHeadLoader + MiiBodyLoader
+ * pour produire un Mii complet (tête GLB FFL + corps GLB statique).
+ *
+ * Usage :
+ *   const loader = new MiiLoader(scene, { modelsBasePath: '/assets/models' })
+ *   const mii = await loader.load(miiData)
+ *   // chaque frame :
+ *   mii.update()
+ */
+
 import * as THREE from 'three'
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
-import type { MiiData } from './MiiData.js'
-import { DEFAULT_MII_DATA, randomMiiData } from './MiiData.js'
+import { MiiHeadLoader, miiDataToHex }  from './MiiHeadLoader.js'
+import { MiiBodyLoader }                from './MiiBodyLoader.js'
+import type { MiiHeadOptions }          from './MiiHeadLoader.js'
+import type { BodyStyle }               from './MiiBodyLoader.js'
+import type { MiiData }                 from './MiiData.js'
+
+// ─── Options ──────────────────────────────────────────────────────────────────
 
 export interface MiiLoaderOptions {
-  apiBase?:       string
-  shaderType?:    'wiiu' | 'switch' | 'miitomo'
+  /** URL de base de l'API FFL */
+  apiBase?: string
+  /** Chemin de base vers les modèles GLB du corps */
+  modelsBasePath?: string
+  /** Style de corps ('wiiu' | 'switch') */
+  bodyStyle?: BodyStyle
+  /** Résolution de la texture visage */
   texResolution?: number
-  width?:         number
-  /** Scale appliqué au groupe Three.js. Défaut : 0.015 (GLB ~160u → monde ~2.4m) */
-  scale?:         number
+  /**
+   * Scale global appliqué au root group.
+   * Corps GLB wiiu ~12.87 unités → 0.155 donne ~2m dans la scène.
+   * Défaut : 0.155
+   */
+  scale?: number
 }
+
+// ─── Instance Mii complète ────────────────────────────────────────────────────
 
 export interface MiiInstance {
-  group: THREE.Group
-  body:  THREE.Object3D
-  data:  MiiData
-  hex:   string
+  /**
+   * Group THREE.js racine.
+   * Ajouter ce group à la scène — NE PAS ajouter corps/tête séparément.
+   */
+  root: THREE.Group
+
+  /** Données MiiData source */
+  data: MiiData
+
+  /** Hex FFSD correspondant */
+  hex: string
+
+  /**
+   * À appeler chaque frame (dans la boucle d'animation).
+   * Synchronise la position/rotation de la tête sur le head bone du corps.
+   */
+  update(): void
+
+  /** Positionne le Mii dans le monde */
   setPosition(x: number, y: number, z: number): void
-  setRotationY(radians: number): void
+
+  /** Oriente le Mii sur l'axe Y */
+  setRotationY(rad: number): void
+
+  /**
+   * Pose le Mii sur le sol (Y=0) via bounding box.
+   * À appeler après setPosition, une fois les meshes chargés.
+   */
+  placeOnGround(): void
+
+  /** Sérialise les données visuelles */
   toJSON(): MiiData
-  dispose(): void
+
+  /** Retire de la scène et libère les ressources */
+  dispose(scene: THREE.Scene): void
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// FFSD de référence valide — 96 octets, CRC vérifié
-// ─────────────────────────────────────────────────────────────────────────────
-
-const BASE_FFSD_HEX =
-  '03810040000000000000000080ff709900000000000000000000740065007300' +
-  '7400000000000000000000000000776f00003501026844182634461481121768' +
-  '0d0000290052485000000000000000000000000000000000000000000000ff50'
-
-function crc16(data: Uint8Array, length: number): number {
-  let crc = 0x0000
-  for (let i = 0; i < length; i++) {
-    crc ^= (data[i]! << 8)
-    for (let j = 0; j < 8; j++) {
-      crc = crc & 0x8000 ? ((crc << 1) ^ 0x1021) & 0xffff : (crc << 1) & 0xffff
-    }
-  }
-  return crc
-}
-
-class BitWriter {
-  readonly data: Uint8Array
-  private pos = 0
-  private bigEndian = false
-
-  constructor(base: Uint8Array) { this.data = new Uint8Array(base) }
-
-  swapEndian(): void { this.bigEndian = !this.bigEndian }
-
-  writeBit(bit: number): void {
-    const byteIdx = this.pos >> 3
-    let   bitIdx  = this.pos & 7
-    if (this.bigEndian) bitIdx = 7 - bitIdx
-    if (bit) this.data[byteIdx]! |=  (1 << bitIdx)
-    else     this.data[byteIdx]! &= ~(1 << bitIdx)
-    this.pos++
-  }
-
-  writeBits(val: number, n: number): void {
-    for (let i = 0; i < n; i++) this.writeBit((val >> i) & 1)
-  }
-
-  writeBool(val: boolean): void { this.writeBit(val ? 1 : 0) }
-
-  alignByte(): void {
-    if (this.pos & 7) this.pos = ((this.pos >> 3) + 1) << 3
-  }
-
-  writeUint8(val: number): void { this.alignByte(); this.writeBits(val & 0xff, 8) }
-
-  writeBuffer(buf: Uint8Array | number[]): void {
-    this.alignByte()
-    for (const b of buf) this.writeBits(b as number, 8)
-  }
-
-  skipBit():   void { this.pos++ }
-  skipInt16(): void { this.alignByte(); this.pos += 16 }
-
-  writeUtf16(str: string, byteLength = 20): void {
-    this.alignByte()
-    const buf = new Uint8Array(byteLength)
-    const chars = [...str].slice(0, byteLength / 2)
-    for (let i = 0; i < chars.length; i++) {
-      const code = chars[i]!.charCodeAt(0)
-      buf[i * 2]     = code & 0xff
-      buf[i * 2 + 1] = (code >> 8) & 0xff
-    }
-    this.writeBuffer(buf)
-  }
-}
-
-function hexToUint8(hex: string): Uint8Array {
-  const arr = new Uint8Array(hex.length / 2)
-  for (let i = 0; i < arr.length; i++) arr[i] = parseInt(hex.slice(i * 2, i * 2 + 2), 16)
-  return arr
-}
-
-const BASE_FFSD = hexToUint8(BASE_FFSD_HEX)
-
-export function miiDataToBuffer(data: MiiData): Uint8Array {
-  const w = new BitWriter(BASE_FFSD)
-
-  w.writeUint8(3); w.writeBool(true); w.writeBool(false)
-  w.writeBits(0, 2); w.writeBits(0, 2); w.alignByte()
-  w.writeBits(0, 4); w.writeBits(0, 4); w.writeBits(0, 4); w.writeBits(4, 3); w.alignByte()
-  w.writeBuffer(new Uint8Array(8))
-  w.swapEndian()
-  w.writeBool(true); w.writeBool(false); w.writeBool(false); w.writeBool(true)
-  w.writeBits(0, 28)
-  w.swapEndian()
-  w.writeBuffer(new Uint8Array(6)); w.skipInt16()
-
-  w.writeBit(data.gender)
-  w.writeBits(data.birthMonth, 4); w.writeBits(data.birthDay, 5)
-  w.writeBits(data.favoriteColor, 4); w.writeBool(data.favorite); w.alignByte()
-
-  w.writeUtf16(data.miiName.slice(0, 10), 20)
-  w.writeUint8(data.height); w.writeUint8(data.build)
-
-  w.writeBool(false)
-  w.writeBits(data.faceType, 4); w.writeBits(data.skinColor, 3)
-  w.writeBits(data.wrinklesType, 4); w.writeBits(data.makeupType, 4)
-  w.writeUint8(data.hairType)
-  w.writeBits(data.hairColor, 3); w.writeBool(data.flipHair); w.alignByte()
-
-  w.writeBits(data.eyeType, 6); w.writeBits(data.eyeColor, 3)
-  w.writeBits(data.eyeScale, 4); w.writeBits(data.eyeVerticalStretch, 3)
-  w.writeBits(data.eyeRotation, 5); w.writeBits(data.eyeSpacing, 4)
-  w.writeBits(data.eyeYPosition, 5); w.alignByte()
-
-  w.writeBits(data.eyebrowType, 5); w.writeBits(data.eyebrowColor, 3)
-  w.writeBits(data.eyebrowScale, 4); w.writeBits(data.eyebrowVerticalStretch, 3)
-  w.skipBit()
-  w.writeBits(data.eyebrowRotation, 4); w.skipBit()
-  w.writeBits(data.eyebrowSpacing, 4)
-  w.writeBits(Math.max(3, data.eyebrowYPosition), 5); w.alignByte()
-
-  w.writeBits(data.noseType, 5); w.writeBits(data.noseScale, 4)
-  w.writeBits(data.noseYPosition, 5); w.alignByte()
-
-  w.writeBits(data.mouthType, 6); w.writeBits(data.mouthColor, 3)
-  w.writeBits(data.mouthScale, 4); w.writeBits(data.mouthHorizontalStretch, 3)
-  w.writeBits(data.mouthYPosition, 5)
-  w.writeBits(data.mustacheType, 3); w.writeUint8(0)
-  w.writeBits(data.beardType, 3); w.writeBits(data.facialHairColor, 3)
-  w.writeBits(data.mustacheScale, 4); w.writeBits(data.mustacheYPosition, 5); w.alignByte()
-
-  w.writeBits(data.glassesType, 4); w.writeBits(data.glassesColor, 3)
-  w.writeBits(data.glassesScale, 4); w.writeBits(data.glassesYPosition, 5)
-  w.writeBool(data.moleEnabled)
-  w.writeBits(data.moleScale, 4); w.writeBits(data.moleXPosition, 5)
-  w.writeBits(data.moleYPosition, 5); w.alignByte()
-
-  w.writeUtf16((data.creatorName ?? '').slice(0, 10), 20)
-  w.skipInt16()
-
-  // CRC16-XMODEM sur 94 octets → big-endian à 0x5E-0x5F
-  w.data[0x5e] = 0; w.data[0x5f] = 0
-  const crc = crc16(w.data, 94)
-  w.data[0x5e] = (crc >> 8) & 0xff
-  w.data[0x5f] = crc & 0xff
-
-  return w.data
-}
-
-export function miiDataToHex(data: MiiData): string {
-  return Array.from(miiDataToBuffer(data)).map(b => b.toString(16).padStart(2, '0')).join('')
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// MiiLoader
-// ─────────────────────────────────────────────────────────────────────────────
+// ─── Loader principal ─────────────────────────────────────────────────────────
 
 export class MiiLoader {
-  private scene:         THREE.Scene
-  private apiBase:       string
-  private shaderType:    string
-  private texResolution: number
-  private width:         number
-  private scale:         number
-  private gltfLoader:    GLTFLoader
+  private scene: THREE.Scene
+  private headLoader: MiiHeadLoader
+  private bodyLoader: MiiBodyLoader
+  private bodyStyle: BodyStyle
+  private globalScale: number
 
   constructor(scene: THREE.Scene, options: MiiLoaderOptions = {}) {
-    this.scene         = scene
-    this.apiBase       = options.apiBase       ?? 'https://mii-unsecure.ariankordi.net'
-    this.shaderType    = options.shaderType    ?? 'wiiu'
-    this.texResolution = options.texResolution ?? 512
-    this.width         = options.width         ?? 512
-    // GLB all_body fait ~160 unités → 0.015 ≈ 2.4m, cohérent avec un personnage 1.75m
-    this.scale         = options.scale         ?? 0.015
-    this.gltfLoader    = new GLTFLoader()
+    this.scene       = scene
+    this.bodyStyle   = options.bodyStyle ?? 'wiiu'
+    this.globalScale = options.scale     ?? 0.155
+
+    this.headLoader = new MiiHeadLoader(scene, {
+      apiBase:       options.apiBase,
+      texResolution: options.texResolution,
+      // scale tête calibré pour s'aligner avec le corps wiiu (valeur mii-creator)
+      scale: 0.12,
+    } satisfies MiiHeadOptions)
+
+    this.bodyLoader = new MiiBodyLoader(
+      options.modelsBasePath ?? '/assets/models'
+    )
   }
 
-  async loadRandom(
-    position?: THREE.Vector3 | { x: number; y: number; z: number }
-  ): Promise<MiiInstance> {
-    return this.loadFromData(randomMiiData(), position)
-  }
+  /**
+   * Charge un Mii complet depuis des données MiiData.
+   * Les deux chargements (tête + corps) sont faits en parallèle.
+   */
+  async load(data: MiiData): Promise<MiiInstance> {
+    const hex = miiDataToHex(data)
 
-  async loadCoherent(
-    style: 'masculine' | 'feminine' | 'random' = 'random',
-    position?: THREE.Vector3 | { x: number; y: number; z: number }
-  ): Promise<MiiInstance> {
-    const data = randomMiiData()
-    if (style === 'masculine') {
-      data.gender = 0; data.makeupType = 0
-      data.mustacheType = Math.random() < 0.2 ? Math.floor(Math.random() * 5) + 1 : 0
-    } else if (style === 'feminine') {
-      data.gender = 1
-      data.makeupType = Math.floor(Math.random() * 11) + 1
-      data.mustacheType = 0; data.beardType = 0
+    const [head, body] = await Promise.all([
+      this.headLoader.loadFromHex(hex),
+      this.bodyLoader.load({
+        gender:        data.gender,
+        height:        data.height,
+        build:         data.build,
+        favoriteColor: data.favoriteColor,
+        skinColor:     data.skinColor,
+        favorite:      data.favorite,
+        normalMii:     true,
+        style:         this.bodyStyle,
+      }),
+    ])
+
+    // ── Construire la hiérarchie ──────────────────────────────────────────────
+    const root = new THREE.Group()
+    root.scale.setScalar(this.globalScale)
+
+    // Corps en enfant direct de root
+    root.add(body.group)
+
+    // Tête en enfant direct de root (positionnée via head bone chaque frame)
+    root.add(head.group)
+
+    // Position initiale de la tête sur le head bone (avant la 1ère frame)
+    body.updateHeadTransform(head.group)
+
+    // Ajouter root à la scène
+    this.scene.add(root)
+
+    // ── Helpers ──────────────────────────────────────────────────────────────
+    const update = () => {
+      body.updateHeadTransform(head.group)
     }
-    return this.loadFromData(data, position)
-  }
 
-  async loadFromData(
-    data: Partial<MiiData>,
-    position?: THREE.Vector3 | { x: number; y: number; z: number }
-  ): Promise<MiiInstance> {
-    const fullData: MiiData = { ...DEFAULT_MII_DATA, ...data }
-    return this._load(miiDataToHex(fullData), fullData, position)
-  }
-
-  async loadFromHex(
-    hex: string,
-    position?: THREE.Vector3 | { x: number; y: number; z: number }
-  ): Promise<MiiInstance> {
-    return this._load(hex, { ...DEFAULT_MII_DATA }, position)
-  }
-
-  static toHex(data: MiiData): string { return miiDataToHex(data) }
-
-  // ── Privé ──────────────────────────────────────────────────────────────────
-
-  private buildUrl(type: string, hex: string): string {
-    return `${this.apiBase}/miis/image.glb?${new URLSearchParams({
-      type,
-      data:           hex,
-      shaderType:     this.shaderType,
-      texResolution:  String(this.texResolution),
-      width:          String(this.width),
-      bgColor:        'FFFFFF00',
-      verifyCharInfo: '0',
-      lightEnable:    '0',   // ← désactive l'éclairage interne du renderer
-    })}`
-  }
-
-  private loadGLB(url: string): Promise<THREE.Object3D> {
-    return new Promise((resolve, reject) => {
-      this.gltfLoader.load(
-        url,
-        (gltf) => resolve(gltf.scene),
-        undefined,
-        (err) => reject(new Error(`[MiiLoader] GLB load error: ${String(err)}`))
-      )
-    })
-  }
-
-  private async _load(
-    hex:       string,
-    data:      MiiData,
-    position?: THREE.Vector3 | { x: number; y: number; z: number }
-  ): Promise<MiiInstance> {
-    // all_body = Mii complet (tête + corps en une seule requête)
-    const bodyObj = await this.loadGLB(this.buildUrl('all_body', hex))
-
-    const group = new THREE.Group()
-    group.add(bodyObj)
-
-    // Scale : le GLB all_body fait ~160 unités → 0.015 ≈ 2.4m dans le monde physique
-    group.scale.setScalar(this.scale)
-
-    if (position) group.position.set(position.x, position.y, position.z)
-    this.scene.add(group)
-
-    return {
-      group,
-      body: bodyObj,
-      data,
-      hex,
-      setPosition(x, y, z) { group.position.set(x, y, z) },
-      setRotationY(r)       { group.rotation.y = r },
-      toJSON()              { return { ...data } },
-      dispose() {
-        group.parent?.remove(group)
-        group.traverse((child) => {
-          if (child instanceof THREE.Mesh) {
-            child.geometry.dispose()
-            if (Array.isArray(child.material)) {
-              child.material.forEach((m) => m.dispose())
-            } else {
-              child.material.dispose()
-            }
-          }
-        })
-      },
+    const setPosition = (x: number, y: number, z: number) => {
+      root.position.set(x, y, z)
     }
+
+    const setRotationY = (rad: number) => {
+      root.rotation.y = rad
+    }
+
+    const placeOnGround = () => {
+      root.updateWorldMatrix(true, true)
+      const box = new THREE.Box3().setFromObject(root)
+      if (box.min.y < 0.001) {
+        root.position.y += -box.min.y + 0.001
+      }
+    }
+
+    const toJSON = (): MiiData => ({ ...data })
+
+    const dispose = (scene: THREE.Scene) => {
+      scene.remove(root)
+      head.dispose()
+      body.dispose()
+    }
+
+    return { root, data, hex, update, setPosition, setRotationY, placeOnGround, toJSON, dispose }
   }
 }
