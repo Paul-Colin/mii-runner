@@ -29,17 +29,18 @@ const MII_FAVORITE_COLOR: Record<number, number> = {
 
 /** Couleur peau → hex THREE.js (mains) */
 const MII_SKIN_COLOR: Record<number, number> = {
-  0: 0xffd3ad,
-  1: 0xffb66b,
-  2: 0xde7942,
-  3: 0xffaa8c,
-  4: 0xad5129,
-  5: 0x632c18,
-  6: 0xffbea5,
-  7: 0xffc58f,
-  8: 0x8c3c23,
-  9: 0x3c2d23,
+  0: 0xFFD3AD,
+  1: 0xFEB66B,
+  2: 0xDE7942,
+  3: 0xFFAA8C,
+  4: 0xAD5129,
+  5: 0x632C18,
+  6: 0xFFBEA5,
+  7: 0xFFC58F,
+  8: 0x8C3C23,
+  9: 0x3C2D23,
 }
+
 
 /** Couleur pantalon selon le type de Mii */
 const PANTS_COLOR_GRAY = 0x40464e // Mii normal

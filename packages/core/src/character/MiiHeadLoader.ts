@@ -266,8 +266,9 @@ export class MiiHeadLoader {
     data:      MiiData,
     position?: THREE.Vector3 | { x: number; y: number; z: number }
   ): Promise<MiiHeadInstance> {
-    // all_body = Mii complet (tête + corps en une seule requête)
-    const bodyObj = await this.loadGLB(this.buildUrl('all_body', hex))
+    // Charger uniquement la "face" (tête) pour éviter d'avoir un corps renvoyé
+    // par l'API qui se superpose et peut masquer les mains/couleurs du corps statique.
+    const bodyObj = await this.loadGLB(this.buildUrl('face', hex))
 
     const group = new THREE.Group()
     group.add(bodyObj)

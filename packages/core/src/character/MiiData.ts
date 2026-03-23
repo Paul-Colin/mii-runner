@@ -13,7 +13,7 @@ export interface MiiData {
   build:        number   // 0–127
 
   faceType:     number   // 0–11
-  skinColor:    number   // 0–9 (FFL supporte 10 tons de peau)
+  skinColor:    number   // 0–5 (plage FFSD Wii U officielle — champ 3 bits, Nintendo utilise 0–5)
   wrinklesType: number   // 0–11
   makeupType:   number   // 0–11
 
@@ -163,7 +163,7 @@ export function randomMiiData(nameSuffix?: string): MiiData {
     build:        ri(0, 127),
 
     faceType:     ri(0, 11),
-    skinColor:    ri(0, 9),
+    skinColor:    ri(0, 5),
     wrinklesType: Math.random() < 0.15 ? ri(1, 11) : 0,
     makeupType:   gender === 1 && Math.random() < 0.4 ? ri(1, 11) : 0,
 
@@ -235,7 +235,7 @@ export function coherentMiiData(gender?: number, nameSuffix?: string): MiiData {
   const g = gender !== undefined ? gender : ri(0, 1)
 
   // ── Couleurs cohérentes ────────────────────────────────────────────────────
-  const skinColor = ri(0, 9)
+  const skinColor = ri(0, 5)
   const hairColor = ri(0, 7)
   // Sourcils souvent de la même couleur que les cheveux
   const browColor = Math.random() < 0.7 ? hairColor : ri(0, 7)

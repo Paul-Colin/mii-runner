@@ -38,12 +38,12 @@ function morphoToFfsdBuild(muscle: number): number {
 // 6 profils couvrant les extrêmes du spectre T/P/M
 
 const ARCHETYPES = [
-  { label: 'Lilliputien',      height: 1.40, weight: 40,  muscle: 0.5, x: -7.5, gender: 0 as 0|1 },
-  { label: 'Petit vif',        height: 1.55, weight: 48,  muscle: 0.7, x: -4.5, gender: 0 as 0|1 },
-  { label: 'Sprinteur élancé', height: 1.82, weight: 72,  muscle: 1.1, x: -1.5, gender: 0 as 0|1 },
-  { label: 'Tank musclé',      height: 1.78, weight: 108, muscle: 1.9, x:  1.5, gender: 0 as 0|1 },
-  { label: 'Géant maigre',     height: 2.00, weight: 60,  muscle: 0.6, x:  4.5, gender: 0 as 0|1 },
-  { label: 'Colosse',          height: 2.00, weight: 120, muscle: 2.0, x:  7.5, gender: 0 as 0|1 },
+  { label: 'Lilliputien',      height: 1.40, weight: 40,  muscle: 0.5, x: -7.5, },
+  { label: 'Petit vif',        height: 1.55, weight: 48,  muscle: 0.7, x: -4.5, },
+  { label: 'Sprinteur élancé', height: 1.82, weight: 72,  muscle: 1.1, x: -1.5, },
+  { label: 'Tank musclé',      height: 1.78, weight: 108, muscle: 1.9, x:  1.5, },
+  { label: 'Géant maigre',     height: 2.00, weight: 60,  muscle: 0.6, x:  4.5, },
+  { label: 'Colosse',          height: 2.00, weight: 120, muscle: 2.0, x:  7.5, },
 ]
 
 // ─── Demo ─────────────────────────────────────────────────────────────────────
@@ -103,7 +103,8 @@ export async function runDemo07(statsEl: HTMLElement): Promise<void> {
 
       data.height        = morphoToFfsdHeight(cfg.height)
       data.build         = morphoToFfsdBuild(cfg.muscle)
-      data.favoriteColor = [2, 5, 0][i]!
+      // cycle des couleurs favorites (répéter le motif si i >= length)
+      //fzdata.favoriteColor = [2, 5, 0][i % 3]!
 
       const mii = await loader.load(data)
       mii.setPosition(arch.x, 0, 0)
