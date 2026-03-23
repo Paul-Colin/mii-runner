@@ -57,8 +57,10 @@ export interface MiiBodyOptions {
   height: number
   /** Corpulence Mii (0–127) */
   build: number
-  /** Couleur favorite (0–11) */
+  /** Couleur favorite (0–11) — utilisée si favoriteColorHex est null */
   favoriteColor: number
+  /** Override hex de la couleur du haut (ex: '#ff6200') — prioritaire sur favoriteColor */
+  favoriteColorHex?: string | null
   /** Couleur de peau (0–9) */
   skinColor: number
   /** true si Mii favori (pantalon rouge) */
@@ -108,6 +110,7 @@ export class MiiBodyLoader {
       height,
       build,
       favoriteColor,
+      favoriteColorHex,
       skinColor,
       favorite = false,
       normalMii = true,
@@ -130,7 +133,9 @@ export class MiiBodyLoader {
     if (opposite) opposite.visible = false
 
     // ── Appliquer les matériaux couleur ──────────────────────────────────────
-    const favColor  = MII_FAVORITE_COLOR[favoriteColor] ?? 0xd21e14
+    const favColor  = favoriteColorHex
+      ? parseInt(favoriteColorHex.replace('#', ''), 16)
+      : (MII_FAVORITE_COLOR[favoriteColor] ?? 0xd21e14)
     const skinCol   = MII_SKIN_COLOR[skinColor] ?? 0xffd3ad
     const pantsCol  = !normalMii ? PANTS_COLOR_GOLD
                     : favorite   ? PANTS_COLOR_RED
@@ -153,14 +158,22 @@ export class MiiBodyLoader {
     // ── Appliquer le scaling taille / corpulence ─────────────────────────────
     // Formule "scaleApply" portée depuis mii-creator (mode Wii U / Switch)
     // Note: 1.0 scale ≈ build=82 / height=83
-    const scaleX =
+    //
+    // Mapping des axes — le bone 'm' est enfant de skl_root (rotation -90°X).
+    // Après cette rotation parente, les axes locaux de bodyRoot deviennent :
+    //   local X → monde X  (largeur)
+    //   local Y → monde -Z (profondeur avant/arrière)
+    //   local Z → monde Y  (hauteur)
+    //
+    // scaleCorpulence (build+height) → X et Y locaux = largeur + profondeur
+    // scaleHeight     (height seul)  → Z local        = hauteur monde
+    const scaleCorpulence =
       (build * (height * 0.003671875 + 0.4)) / 128.0 +
       height * 0.001796875 +
       0.4
-    const scaleY = height * 0.006015625 + 0.5
-    const scaleZ = scaleX
+    const scaleHeight = height * 0.006015625 + 0.5
 
-    bodyRoot.scale.set(scaleX, scaleY, scaleZ)
+    bodyRoot.scale.set(scaleCorpulence, scaleCorpulence, scaleHeight)
 
     // ── Trouver le head bone ─────────────────────────────────────────────────
     let headBone: THREE.Bone | null = null

@@ -10,7 +10,7 @@
 
 import * as THREE from 'three'
 import { RoomEnvironment }    from 'three/addons/environments/RoomEnvironment.js'
-import { Renderer, getEngineInfo, validateMorphology, getArchetype } from '@mii-engine/core'
+import { Renderer, getEngineInfo, validateMorphology } from '@mii-engine/core'
 import { MiiLoader }          from '@mii-engine/core'
 import { coherentMiiData }    from '@mii-engine/core'
 import type { MiiInstance }   from '@mii-engine/core'
@@ -35,11 +35,15 @@ function morphoToFfsdBuild(muscle: number): number {
 }
 
 // ─── Archétypes ───────────────────────────────────────────────────────────────
+// 6 profils couvrant les extrêmes du spectre T/P/M
 
 const ARCHETYPES = [
-  { label: 'Petit vif',        height: 1.55, weight: 48,  muscle: 0.7, x: -3.5, gender: 0 as 0|1 },
-  { label: 'Sprinteur élancé', height: 1.82, weight: 72,  muscle: 1.1, x:  0,   gender: 0 as 0|1 },
-  { label: 'Tank musclé',      height: 1.78, weight: 108, muscle: 1.9, x:  3.5, gender: 0 as 0|1 },
+  { label: 'Lilliputien',      height: 1.40, weight: 40,  muscle: 0.5, x: -7.5, gender: 0 as 0|1 },
+  { label: 'Petit vif',        height: 1.55, weight: 48,  muscle: 0.7, x: -4.5, gender: 0 as 0|1 },
+  { label: 'Sprinteur élancé', height: 1.82, weight: 72,  muscle: 1.1, x: -1.5, gender: 0 as 0|1 },
+  { label: 'Tank musclé',      height: 1.78, weight: 108, muscle: 1.9, x:  1.5, gender: 0 as 0|1 },
+  { label: 'Géant maigre',     height: 2.00, weight: 60,  muscle: 0.6, x:  4.5, gender: 0 as 0|1 },
+  { label: 'Colosse',          height: 2.00, weight: 120, muscle: 2.0, x:  7.5, gender: 0 as 0|1 },
 ]
 
 // ─── Demo ─────────────────────────────────────────────────────────────────────
@@ -74,7 +78,7 @@ export async function runDemo07(statsEl: HTMLElement): Promise<void> {
   renderer.addGround(40, 20)
 
   const camera = renderer.getCamera()
-  camera.position.set(0, 3, 10)
+  camera.position.set(0, 3, 16)
   camera.lookAt(0, 2, 0)
 
   // ── MiiLoader ─────────────────────────────────────────────────────────────
@@ -116,8 +120,8 @@ export async function runDemo07(statsEl: HTMLElement): Promise<void> {
 
   // ── Labels HTML ───────────────────────────────────────────────────────────
   for (let i = 0; i < ARCHETYPES.length; i++) {
-    const cfg   = morphologies[i]!
-    const arch  = ARCHETYPES[i]!
+    const cfg  = morphologies[i]!
+    const arch = ARCHETYPES[i]!
     const label = document.createElement('div')
     label.style.cssText = `
       position: absolute;
@@ -133,7 +137,7 @@ export async function runDemo07(statsEl: HTMLElement): Promise<void> {
       white-space: nowrap;
     `
     label.innerHTML = `
-      <b>${getArchetype(cfg)}</b><br>
+      <b>${arch.label}</b><br>
       T:${cfg.height.toFixed(2)}m  P:${cfg.weight.toFixed(0)}kg  M:${cfg.muscle.toFixed(1)}<br>
       ffsd h=${miis[i]?.data.height ?? '?'}  build=${miis[i]?.data.build ?? '?'}
     `
@@ -170,7 +174,7 @@ export async function runDemo07(statsEl: HTMLElement): Promise<void> {
       if (d && labels[i]) {
         const cfg = morphologies[i]!
         labels[i]!.innerHTML = `
-          <b>${getArchetype(cfg)}</b><br>
+          <b>${ARCHETYPES[i]!.label}</b><br>
           T:${cfg.height.toFixed(2)}m  P:${cfg.weight.toFixed(0)}kg  M:${cfg.muscle.toFixed(1)}<br>
           ffsd h=${d.height}  build=${d.build}
         `

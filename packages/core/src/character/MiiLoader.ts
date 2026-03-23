@@ -111,14 +111,15 @@ export class MiiLoader {
     const [head, body] = await Promise.all([
       this.headLoader.loadFromHex(hex),
       this.bodyLoader.load({
-        gender:        data.gender,
-        height:        data.height,
-        build:         data.build,
-        favoriteColor: data.favoriteColor,
-        skinColor:     data.skinColor,
-        favorite:      data.favorite,
-        normalMii:     true,
-        style:         this.bodyStyle,
+        gender:           data.gender,
+        height:           data.height,
+        build:            data.build,
+        favoriteColor:    data.favoriteColor,
+        favoriteColorHex: data.favoriteColorHex,
+        skinColor:        data.skinColor,
+        favorite:         data.favorite,
+        normalMii:        true,
+        style:            this.bodyStyle,
       }),
     ])
 

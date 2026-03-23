@@ -6,13 +6,14 @@ export interface MiiData {
   gender:       number   // 0–1
   birthMonth:   number   // 0–12
   birthDay:     number   // 0–31
-  favoriteColor: number  // 0–11
+  favoriteColor:    number   // 0–11
+  favoriteColorHex: string | null  // ex: '#ff6200' — override client-side du matériau corps (null = table standard)
   favorite:     boolean
   height:       number   // 0–127
   build:        number   // 0–127
 
   faceType:     number   // 0–11
-  skinColor:    number   // 0–5
+  skinColor:    number   // 0–9 (FFL supporte 10 tons de peau)
   wrinklesType: number   // 0–11
   makeupType:   number   // 0–11
 
@@ -73,7 +74,8 @@ export const DEFAULT_MII_DATA: MiiData = {
   gender:       0,
   birthMonth:   0,
   birthDay:     0,
-  favoriteColor: 0,
+  favoriteColor:    0,
+  favoriteColorHex: null,
   favorite:     false,
   height:       64,
   build:        64,
@@ -154,13 +156,14 @@ export function randomMiiData(nameSuffix?: string): MiiData {
     gender,
     birthMonth:   0,
     birthDay:     0,
-    favoriteColor: ri(0, 11),
+    favoriteColor:    ri(0, 11),
+    favoriteColorHex: null,
     favorite:     false,
     height:       ri(0, 127),
     build:        ri(0, 127),
 
     faceType:     ri(0, 11),
-    skinColor:    ri(0, 5),
+    skinColor:    ri(0, 9),
     wrinklesType: Math.random() < 0.15 ? ri(1, 11) : 0,
     makeupType:   gender === 1 && Math.random() < 0.4 ? ri(1, 11) : 0,
 
@@ -232,7 +235,7 @@ export function coherentMiiData(gender?: number, nameSuffix?: string): MiiData {
   const g = gender !== undefined ? gender : ri(0, 1)
 
   // ── Couleurs cohérentes ────────────────────────────────────────────────────
-  const skinColor = ri(0, 5)
+  const skinColor = ri(0, 9)
   const hairColor = ri(0, 7)
   // Sourcils souvent de la même couleur que les cheveux
   const browColor = Math.random() < 0.7 ? hairColor : ri(0, 7)
@@ -277,7 +280,8 @@ export function coherentMiiData(gender?: number, nameSuffix?: string): MiiData {
     gender:        g,
     birthMonth:    0,
     birthDay:      0,
-    favoriteColor: ri(0, 11),
+    favoriteColor:    ri(0, 11),
+    favoriteColorHex: null,
     favorite:      false,
     height:        ri(0, 127),
     build:         ri(0, 127),
@@ -351,7 +355,8 @@ export function crossoverMiiData(a: MiiData, b: MiiData): MiiData {
     creatorName:   '',
     gender:        outGender,
     birthMonth:    0, birthDay: 0,
-    favoriteColor: pick(a.favoriteColor, b.favoriteColor),
+    favoriteColor:    pick(a.favoriteColor, b.favoriteColor),
+    favoriteColorHex: null,
     favorite:      false,
     height:        pick(a.height, b.height),
     build:         pick(a.build, b.build),
