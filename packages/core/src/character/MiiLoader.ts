@@ -16,6 +16,11 @@ import type { MiiHeadOptions }          from './MiiHeadLoader.js'
 import type { BodyStyle }               from './MiiBodyLoader.js'
 import type { MiiData }                 from './MiiData.js'
 
+// modulateType index pour les meshes de la tête FFL
+// Source : fflShaderConst.ts (mii-creator / ariankordi)
+const FFL_HAIR     = 4  // FFL_MODULATE_TYPE_SHAPE_HAIR
+const FFL_SKIN     = [0, 2, 3] as const  // FACELINE, NOSE, FOREHEAD
+
 // ─── Options ──────────────────────────────────────────────────────────────────
 
 export interface MiiLoaderOptions {
@@ -122,6 +127,26 @@ export class MiiLoader {
         style:            this.bodyStyle,
       }),
     ])
+
+    // ── Overrides de couleur sur la tête FFL ─────────────────────────────────
+    // Le GLB de l'API FFL expose geometry.userData.modulateType sur chaque mesh.
+    // On peut remplacer la couleur de certaines parties en changeant material.color.
+    if (data.customHairHex || data.favoriteColorHex /* futur: skinHex */) {
+      head.group.traverse((obj) => {
+        const mesh = obj as THREE.Mesh
+        if (!mesh.isMesh) return
+        const modType: number | undefined = mesh.geometry?.userData?.modulateType
+        if (modType === undefined) return
+
+        if (data.customHairHex && modType === FFL_HAIR) {
+          const mat = mesh.material as THREE.MeshBasicMaterial | THREE.MeshStandardMaterial
+          if (mat && 'color' in mat) mat.color.setStyle(data.customHairHex)
+        }
+
+        // Extension future : override peau (FACELINE=0, NOSE=2, FOREHEAD=3)
+        // if (data.customSkinHex && (FFL_SKIN as readonly number[]).includes(modType)) { ... }
+      })
+    }
 
     // ── Construire la hiérarchie ──────────────────────────────────────────────
     const root = new THREE.Group()

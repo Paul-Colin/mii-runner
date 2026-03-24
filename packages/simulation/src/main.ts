@@ -50,7 +50,11 @@ switch (demo) {
     await runDemo07(statsEl)
     break
   }
-  
+  case '08': {
+    const { runDemo08 } = await import('./demos/demo-08-mii-custom.js')
+    await runDemo08(statsEl)
+    break
+  }
 
   default:
     statsEl.textContent = `Demo "${demo}" introuvable.`

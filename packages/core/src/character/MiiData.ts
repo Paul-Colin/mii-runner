@@ -1,5 +1,7 @@
 // packages/core/src/character/MiiData.ts
 
+import { randomSwitchColor } from './MiiColorPalette.js'
+
 export interface MiiData {
   miiName:      string
   creatorName:  string
@@ -7,7 +9,8 @@ export interface MiiData {
   birthMonth:   number   // 0–12
   birthDay:     number   // 0–31
   favoriteColor:    number   // 0–11
-  favoriteColorHex: string | null  // ex: '#ff6200' — override client-side du matériau corps (null = table standard)
+  favoriteColorHex: string | null  // ex: '#ff6200' — override couleur corps/haut (null = table standard 12 couleurs)
+  customHairHex:    string | null  // ex: '#57b4f2' — override couleur cheveux via palette Switch (null = hairColor standard)
   favorite:     boolean
   height:       number   // 0–127
   build:        number   // 0–127
@@ -76,6 +79,7 @@ export const DEFAULT_MII_DATA: MiiData = {
   birthDay:     0,
   favoriteColor:    0,
   favoriteColorHex: null,
+  customHairHex:    null,
   favorite:     false,
   height:       64,
   build:        64,
@@ -158,6 +162,7 @@ export function randomMiiData(nameSuffix?: string): MiiData {
     birthDay:     0,
     favoriteColor:    ri(0, 11),
     favoriteColorHex: null,
+    customHairHex:    null,
     favorite:     false,
     height:       ri(0, 127),
     build:        ri(0, 127),
@@ -231,12 +236,15 @@ export function randomMiiData(nameSuffix?: string): MiiData {
 //   → pour placer la moustache entre nez et bouche, on utilise [8, 14]
 // ─────────────────────────────────────────────────────────────────────────────
 
-export function coherentMiiData(gender?: number, nameSuffix?: string): MiiData {
+export function coherentMiiData(gender?: number, nameSuffix?: string, customColors = false): MiiData {
   const g = gender !== undefined ? gender : ri(0, 1)
 
   // ── Couleurs cohérentes ────────────────────────────────────────────────────
   const skinColor = ri(0, 5)
   const hairColor = ri(0, 7)
+  // Couleurs custom Switch (palette étendue 100 couleurs)
+  const favoriteColorHex = customColors ? randomSwitchColor() : null
+  const customHairHex    = customColors ? randomSwitchColor() : null
   // Sourcils souvent de la même couleur que les cheveux
   const browColor = Math.random() < 0.7 ? hairColor : ri(0, 7)
 
@@ -281,7 +289,8 @@ export function coherentMiiData(gender?: number, nameSuffix?: string): MiiData {
     birthMonth:    0,
     birthDay:      0,
     favoriteColor:    ri(0, 11),
-    favoriteColorHex: null,
+    favoriteColorHex,
+    customHairHex,
     favorite:      false,
     height:        ri(0, 127),
     build:         ri(0, 127),
@@ -357,6 +366,7 @@ export function crossoverMiiData(a: MiiData, b: MiiData): MiiData {
     birthMonth:    0, birthDay: 0,
     favoriteColor:    pick(a.favoriteColor, b.favoriteColor),
     favoriteColorHex: null,
+    customHairHex:    null,
     favorite:      false,
     height:        pick(a.height, b.height),
     build:         pick(a.build, b.build),

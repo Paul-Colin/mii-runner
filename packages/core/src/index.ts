@@ -45,6 +45,9 @@ export type { MiiBodyOptions, MiiBodyInstance, BodyStyle } from './character/Mii
 export { MiiLoader } from './character/MiiLoader.js'
 export type { MiiLoaderOptions, MiiInstance } from './character/MiiLoader.js'
 
+// Palette de couleurs étendue Switch (100 couleurs)
+export { SWITCH_BODY_COLORS, SWITCH_BODY_COLORS_COUNT, randomSwitchColor } from './character/MiiColorPalette.js'
+
 export { FreeCamera } from './engine/FreeCamera.js'
 export type { FreeCameraOptions } from './engine/FreeCamera.js'
 
