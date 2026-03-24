@@ -10,7 +10,9 @@ export interface MiiData {
   birthDay:     number   // 0–31
   favoriteColor:    number   // 0–11
   favoriteColorHex: string | null  // ex: '#ff6200' — override couleur corps/haut (null = table standard 12 couleurs)
-  customHairHex:    string | null  // ex: '#57b4f2' — override couleur cheveux via palette Switch (null = hairColor standard)
+  customHairHex:    string | null  // ex: '#57b4f2' — override cheveux via palette Switch (null = hairColor standard)
+  customEyeHex:     string | null  // override traits du visage (yeux + sourcils + lèvres, modulateType=6 = MASK)
+  customGlassesHex: string | null  // override lunettes uniquement (modulateType=8 = GLASS)
   favorite:     boolean
   height:       number   // 0–127
   build:        number   // 0–127
@@ -80,6 +82,8 @@ export const DEFAULT_MII_DATA: MiiData = {
   favoriteColor:    0,
   favoriteColorHex: null,
   customHairHex:    null,
+  customEyeHex:     null,
+  customGlassesHex: null,
   favorite:     false,
   height:       64,
   build:        64,
@@ -163,6 +167,8 @@ export function randomMiiData(nameSuffix?: string): MiiData {
     favoriteColor:    ri(0, 11),
     favoriteColorHex: null,
     customHairHex:    null,
+    customEyeHex:     null,
+    customGlassesHex: null,
     favorite:     false,
     height:       ri(0, 127),
     build:        ri(0, 127),
@@ -245,6 +251,8 @@ export function coherentMiiData(gender?: number, nameSuffix?: string, customColo
   // Couleurs custom Switch (palette étendue 100 couleurs)
   const favoriteColorHex = customColors ? randomSwitchColor() : null
   const customHairHex    = customColors ? randomSwitchColor() : null
+  // Note : customEyeHex retiré — les couleurs yeux/sourcils/lèvres sont baked
+  // dans la texture XluMask du GLB FFL, non modifiables via material.color
   // Sourcils souvent de la même couleur que les cheveux
   const browColor = Math.random() < 0.7 ? hairColor : ri(0, 7)
 
@@ -272,9 +280,10 @@ export function coherentMiiData(gender?: number, nameSuffix?: string, customColo
   const makeupType = g === 1 && Math.random() < 0.45 ? ri(1, 11) : 0
 
   // ── Lunettes — positionnées au niveau des yeux ────────────────────────────
-  const hasGlasses = Math.random() < 0.2
+  const hasGlasses      = Math.random() < 0.2
+  const customGlassesHex = customColors && hasGlasses ? randomSwitchColor() : null
   // glassesYPosition ∈ [0, 20], eyeY ∈ [0, 18] → mapping proportionnel
-  const glassesY   = hasGlasses ? clamp(Math.round(eyeY * 1.1), 0, 20) : 10
+  const glassesY        = hasGlasses ? clamp(Math.round(eyeY * 1.1), 0, 20) : 10
 
   // ── Échelles raisonnables (évite les valeurs extrêmes) ────────────────────
   const eyeScale   = ri(2, 6)
@@ -291,6 +300,8 @@ export function coherentMiiData(gender?: number, nameSuffix?: string, customColo
     favoriteColor:    ri(0, 11),
     favoriteColorHex,
     customHairHex,
+    customEyeHex:     null,
+    customGlassesHex,
     favorite:      false,
     height:        ri(0, 127),
     build:         ri(0, 127),
@@ -367,6 +378,8 @@ export function crossoverMiiData(a: MiiData, b: MiiData): MiiData {
     favoriteColor:    pick(a.favoriteColor, b.favoriteColor),
     favoriteColorHex: null,
     customHairHex:    null,
+    customEyeHex:     null,
+    customGlassesHex: null,
     favorite:      false,
     height:        pick(a.height, b.height),
     build:         pick(a.build, b.build),

@@ -18,8 +18,10 @@ import type { MiiData }                 from './MiiData.js'
 
 // modulateType index pour les meshes de la tête FFL
 // Source : fflShaderConst.ts (mii-creator / ariankordi)
-const FFL_HAIR     = 4  // FFL_MODULATE_TYPE_SHAPE_HAIR
-const FFL_SKIN     = [0, 2, 3] as const  // FACELINE, NOSE, FOREHEAD
+const FFL_HAIR    = 4  // FFL_MODULATE_TYPE_SHAPE_HAIR
+const FFL_MASK    = 6  // FFL_MODULATE_TYPE_SHAPE_MASK — TOUS les traits du visage (yeux, sourcils, lèvres, etc.)
+const FFL_GLASS   = 8  // FFL_MODULATE_TYPE_SHAPE_GLASS — lunettes uniquement
+const FFL_SKIN    = [0, 2, 3] as const  // FACELINE, NOSE, FOREHEAD
 
 // ─── Options ──────────────────────────────────────────────────────────────────
 
@@ -131,20 +133,44 @@ export class MiiLoader {
     // ── Overrides de couleur sur la tête FFL ─────────────────────────────────
     // Le GLB de l'API FFL expose geometry.userData.modulateType sur chaque mesh.
     // On peut remplacer la couleur de certaines parties en changeant material.color.
-    if (data.customHairHex || data.favoriteColorHex /* futur: skinHex */) {
+    // ── Overrides de couleur sur la tête FFL ─────────────────────────────────
+    // Structure confirmée du GLB `face` (ariankordi FFL API) :
+    //   OpaHair     type=4  modulateColor=[r,g,b] ← couleur baked dans modulateColor
+    //   XluMask     type=6  modulateColor=[1,1,1] ← UN seul mesh pour TOUS les traits
+    //                                               (yeux/sourcils/lèvres) — couleurs
+    //                                               baked dans la TEXTURE, pas modifiable
+    //   OpaFaceline type=0  modulateColor=[1,1,1] ← texture pré-colorée (peau)
+    //   OpaForehead type=3  modulateColor=[r,g,b] ← skin color baked
+    //   OpaGlass    type=8  (présent uniquement si le Mii a des lunettes)
+    //
+    // → Seuls hair (4) et glasses (8) sont surchargeables proprement via material.color.
+    //   L'iris des yeux est baked dans la texture du XluMask → non modifiable ici.
+    // DEBUG — dump tous les meshes de la tête pour identifier les modulateType
+    if (data.customGlassesHex) {
+      console.group(`[MiiLoader DEBUG] glassesType=${data.glassesType} customGlassesHex=${data.customGlassesHex}`)
+      head.group.traverse((obj) => {
+        const mesh = obj as THREE.Mesh
+        if (!mesh.isMesh) return
+        const ud = mesh.geometry?.userData ?? {}
+        console.log(`  mesh="${mesh.name}"  modulateType=${ud.modulateType}  modulateMode=${ud.modulateMode}  modulateColor=${JSON.stringify(ud.modulateColor)}  matType=${(mesh.material as any)?.type}`)
+      })
+      console.groupEnd()
+    }
+
+    if (data.customHairHex || data.customGlassesHex) {
       head.group.traverse((obj) => {
         const mesh = obj as THREE.Mesh
         if (!mesh.isMesh) return
         const modType: number | undefined = mesh.geometry?.userData?.modulateType
         if (modType === undefined) return
 
-        if (data.customHairHex && modType === FFL_HAIR) {
+        const applyColor = (hex: string) => {
           const mat = mesh.material as THREE.MeshBasicMaterial | THREE.MeshStandardMaterial
-          if (mat && 'color' in mat) mat.color.setStyle(data.customHairHex)
+          if (mat && 'color' in mat) mat.color.setStyle(hex)
         }
 
-        // Extension future : override peau (FACELINE=0, NOSE=2, FOREHEAD=3)
-        // if (data.customSkinHex && (FFL_SKIN as readonly number[]).includes(modType)) { ... }
+        if (data.customHairHex    && modType === FFL_HAIR)  applyColor(data.customHairHex)
+        if (data.customGlassesHex && modType === FFL_GLASS) applyColor(data.customGlassesHex)
       })
     }
 

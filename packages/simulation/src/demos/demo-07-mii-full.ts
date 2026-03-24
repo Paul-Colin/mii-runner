@@ -70,7 +70,7 @@ export async function runDemo07(statsEl: HTMLElement): Promise<void> {
   const internalRenderer = new THREE.WebGLRenderer({ canvas: domElement, context: ctx as WebGLRenderingContext })
   const pmrem      = new THREE.PMREMGenerator(internalRenderer)
   const roomEnv    = new RoomEnvironment()
-  scene.environment = pmrem.fromScene(roomEnv, 0.04).texture
+  scene.environment = pmrem.fromScene(roomEnv, 0.25).texture
   roomEnv.dispose()
   pmrem.dispose()
 

@@ -48,7 +48,7 @@ export async function runDemo08(statsEl: HTMLElement): Promise<void> {
   const internalRenderer = new THREE.WebGLRenderer({ canvas: domElement, context: ctx as WebGLRenderingContext })
   const pmrem   = new THREE.PMREMGenerator(internalRenderer)
   const roomEnv = new RoomEnvironment()
-  scene.environment = pmrem.fromScene(roomEnv, 0.04).texture
+  scene.environment = pmrem.fromScene(roomEnv, 0.25).texture
   roomEnv.dispose()
   pmrem.dispose()
 
@@ -77,8 +77,13 @@ export async function runDemo08(statsEl: HTMLElement): Promise<void> {
 
     const promises = Array.from({ length: MII_COUNT }, async (_, i) => {
       const gender = Math.random() < 0.5 ? 0 : 1
-      // customColors=true → favoriteColorHex + customHairHex aléatoires depuis SWITCH_BODY_COLORS
+      // customColors=true → favoriteColorHex + customHairHex + customGlassesHex aléatoires
       const data = coherentMiiData(gender, String(i + 1), true)
+      // Forcer des lunettes sur les Miis pairs pour tester customGlassesHex
+      if (i % 2 === 0 && data.glassesType === 0) {
+        data.glassesType = Math.floor(Math.random() * 8) + 1
+        data.customGlassesHex = data.customGlassesHex ?? data.favoriteColorHex
+      }
       // height et build entièrement aléatoires (déjà fait par coherentMiiData)
 
       const mii = await loader.load(data)
@@ -94,6 +99,23 @@ export async function runDemo08(statsEl: HTMLElement): Promise<void> {
   }
 
   await loadAll()
+
+  // ── Helper label ──────────────────────────────────────────────────────────
+  function swatch(hex: string | null): string {
+    if (!hex) return ''
+    return `<span style="display:inline-block;width:10px;height:10px;background:${hex};border:1px solid #fff;vertical-align:middle;margin-left:4px"></span>`
+  }
+
+  function buildLabel(d: typeof miis[0]['data']): string {
+    return `
+      <b>${d.miiName}</b> ${d.gender === 0 ? '♂' : '♀'}<br>
+      h=${d.height} b=${d.build}<br>
+      ${swatch(d.favoriteColorHex)} corps
+      ${swatch(d.customHairHex)} cheveux
+      ${d.customEyeHex     ? swatch(d.customEyeHex)     + ' yeux'    : ''}
+      ${d.customGlassesHex ? swatch(d.customGlassesHex) + ' lunettes' : ''}
+    `
+  }
 
   // ── Labels ────────────────────────────────────────────────────────────────
   for (let i = 0; i < MII_COUNT; i++) {
@@ -112,14 +134,7 @@ export async function runDemo08(statsEl: HTMLElement): Promise<void> {
       line-height: 1.6;
       white-space: nowrap;
     `
-    const bodyHex = d.favoriteColorHex ?? '#—'
-    const hairHex = d.customHairHex    ?? '(std)'
-    label.innerHTML = `
-      <b>${d.miiName}</b> ${d.gender === 0 ? '♂' : '♀'}<br>
-      h=${d.height} b=${d.build}<br>
-      <span style="display:inline-block;width:10px;height:10px;background:${bodyHex};border:1px solid #fff;vertical-align:middle"></span> corps
-      <span style="display:inline-block;width:10px;height:10px;background:${hairHex};border:1px solid #fff;vertical-align:middle;margin-left:6px"></span> cheveux
-    `
+    label.innerHTML = buildLabel(d)
     document.body.appendChild(label)
     labels.push(label)
   }
@@ -150,14 +165,7 @@ export async function runDemo08(statsEl: HTMLElement): Promise<void> {
     for (let i = 0; i < labels.length; i++) {
       const d = miis[i]?.data
       if (!d || !labels[i]) continue
-      const bodyHex = d.favoriteColorHex ?? '#—'
-      const hairHex = d.customHairHex    ?? '(std)'
-      labels[i]!.innerHTML = `
-        <b>${d.miiName}</b> ${d.gender === 0 ? '♂' : '♀'}<br>
-        h=${d.height} b=${d.build}<br>
-        <span style="display:inline-block;width:10px;height:10px;background:${bodyHex};border:1px solid #fff;vertical-align:middle"></span> corps
-        <span style="display:inline-block;width:10px;height:10px;background:${hairHex};border:1px solid #fff;vertical-align:middle;margin-left:6px"></span> cheveux
-      `
+      labels[i]!.innerHTML = buildLabel(d)
     }
 
     btn.textContent = '🎲 Nouveaux Miis'

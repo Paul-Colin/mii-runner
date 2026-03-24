@@ -11,7 +11,7 @@ export interface RendererOptions {
 const DEFAULT_OPTIONS: RendererOptions = {
   width: 1280,
   height: 720,
-  backgroundColor: 0x1a1a2e,
+  backgroundColor: 0x87c0d0,  // ciel bleu clair — was 0x1a1a2e (navy trop foncé)
   antialias: true,
 }
 
@@ -32,6 +32,11 @@ export class Renderer {
     this.renderer.shadowMap.enabled = true
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap
 
+    // Three.js r155+ : lumières physiques par défaut → outputColorSpace + toneMapping requis
+    this.renderer.outputColorSpace = THREE.SRGBColorSpace
+    this.renderer.toneMapping = THREE.ACESFilmicToneMapping
+    this.renderer.toneMappingExposure = 1.2
+
     this.scene = new THREE.Scene()
     this.scene.background = new THREE.Color(opts.backgroundColor!)
     this.scene.fog = new THREE.Fog(opts.backgroundColor!, 50, 300)
@@ -49,30 +54,37 @@ export class Renderer {
   }
 
   private setupLights(): void {
-    const ambient = new THREE.AmbientLight(0xffffff, 0.4)
+    // Three.js r155+ : intensités en candelas → multiplier par Math.PI
+    // pour retrouver la luminosité de l'ancienne API non-physique.
+    // Source : mii-creator 3DScene.ts — DirectionalLight(0xebfeff, Math.PI)
+
+    // Lumière ambiante — fill doux, évite les zones complètement noires
+    const ambient = new THREE.AmbientLight(0xfff5e8, Math.PI * 0.6)
     this.scene.add(ambient)
 
-    const sun = new THREE.DirectionalLight(0xffffff, 1.2)
-    sun.position.set(30, 50, 30)
+    // Soleil principal — lumière du jour chaude, légèrement désaxée
+    const sun = new THREE.DirectionalLight(0xfff8f0, Math.PI * 1.8)
+    sun.position.set(10, 30, 20)
     sun.castShadow = true
     sun.shadow.mapSize.width = 2048
     sun.shadow.mapSize.height = 2048
     sun.shadow.camera.near = 0.5
     sun.shadow.camera.far = 300
-    sun.shadow.camera.left = -100
-    sun.shadow.camera.right = 100
-    sun.shadow.camera.top = 100
-    sun.shadow.camera.bottom = -100
+    sun.shadow.camera.left = -50
+    sun.shadow.camera.right = 50
+    sun.shadow.camera.top = 50
+    sun.shadow.camera.bottom = -50
     this.scene.add(sun)
 
-    const fill = new THREE.DirectionalLight(0x8888ff, 0.3)
-    fill.position.set(-20, 10, -20)
+    // Fill latéral — contre-jour bleuté doux (simule ciel)
+    const fill = new THREE.DirectionalLight(0xc8d8ff, Math.PI * 0.4)
+    fill.position.set(-15, 10, -10)
     this.scene.add(fill)
   }
 
   addGround(width = 400, depth = 20): THREE.Mesh {
     const geo = new THREE.BoxGeometry(width, 0.2, depth)
-    const mat = new THREE.MeshLambertMaterial({ color: 0x4a7c59 })
+    const mat = new THREE.MeshLambertMaterial({ color: 0x6abf7a })
     const mesh = new THREE.Mesh(geo, mat)
     mesh.receiveShadow = true
     mesh.position.set(0, -0.1, 0)
