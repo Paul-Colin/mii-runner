@@ -1,9 +1,9 @@
 import { FreeCamera, Renderer } from '@mii-engine/core'
 
-export function setupFreeCamera(renderer: Renderer): FreeCamera {
+export function setupFreeCamera(renderer: Renderer, options?: { speed?: number; sensitivity?: number }): FreeCamera {
   const freeCamera = new FreeCamera(renderer.getCamera(), {
-    speed: 8,
-    sensitivity: 0.002,
+    speed:       options?.speed       ?? 8,
+    sensitivity: options?.sensitivity ?? 0.002,
   })
 
   const hint = document.createElement('div')

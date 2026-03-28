@@ -1,3 +1,5 @@
+export {}
+
 const statsEl = document.getElementById('stats')!
 const titleEl = document.getElementById('demo-title')!
 
@@ -12,6 +14,8 @@ const demos: Record<string, string> = {
   '05': 'Demo 05 — Mii Loader',
   '09': 'Demo 09 — Ragdoll Mii',
   '10': 'Demo 10 — Muscles Mii',
+  'env01': 'Env 01 — Île Wuhu',
+  'env02': 'Env 02 — Ligne de départ',
 }
 
 titleEl.textContent = demos[demo] ?? `Demo ${demo}`
@@ -65,6 +69,18 @@ switch (demo) {
   case '10': {
     const { runDemo10 } = await import('./demos/demo-10-muscles.js')
     await runDemo10(statsEl)
+    break
+  }
+
+  // ── Environnement ──────────────────────────────────────────────────────────
+  case 'env01': {
+    const { runEnv01 } = await import('./demos/env-01-wuhu.js')
+    await runEnv01(statsEl)
+    break
+  }
+  case 'env02': {
+    const { runEnv02 } = await import('./demos/env-02-start.js')
+    await runEnv02(statsEl)
     break
   }
 
