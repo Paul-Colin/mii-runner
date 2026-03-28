@@ -52,6 +52,10 @@ export type { MiiSegment } from './character/MiiSkeleton.js'
 // MiiRagdoll (physique RAPIER + visuel Mii synchronisé)
 export { MiiRagdoll } from './character/MiiRagdoll.js'
 
+// MiiMuscles (moteurs articulaires normalisés [-1,1] pour le NN)
+export { MiiMuscles, MUSCLE_DEFS } from './character/MiiMuscles.js'
+export type { } from './character/MiiMuscles.js'
+
 // Palette de couleurs étendue Switch (100 couleurs)
 export { SWITCH_BODY_COLORS, SWITCH_BODY_COLORS_COUNT, randomSwitchColor } from './character/MiiColorPalette.js'
 

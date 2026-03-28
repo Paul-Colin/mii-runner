@@ -41,11 +41,13 @@ export interface MiiSegment {
 // ── Classe principale ─────────────────────────────────────────────────────────
 
 export class MiiSkeleton {
-  readonly segments = new Map<string, MiiSegment>()
-  private  joints:   RAPIER.ImpulseJoint[] = []
-  private  world:    RAPIER.World
+  readonly segments    = new Map<string, MiiSegment>()
+  private  _joints:    RAPIER.ImpulseJoint[] = []
+  /** Joints indexés par nom — accès pour le système de muscles */
+  readonly joints      = new Map<string, RAPIER.ImpulseJoint>()
+  private  world:      RAPIER.World
   /** Positions world des bones GLB + points calculés */
-  readonly bonePos = new Map<string, THREE.Vector3>()
+  readonly bonePos     = new Map<string, THREE.Vector3>()
 
   private constructor(world: RAPIER.World) {
     this.world = world
@@ -224,9 +226,14 @@ export class MiiSkeleton {
       parent:       string
       child:        string
       junction:     string   // clé dans bonePos de la position de l'articulation
-      type:         'fixed' | 'revolute' | 'spherical'
+      type:         'fixed' | 'revolute' | 'spherical' | 'ball'
       axis?:        { x: number, y: number, z: number }
       limits?:      { min: number, max: number }
+      // Pour 'ball' : limites angulaires par axe (via raw API RAPIER)
+      // Axe du joint défini par axis={x:1,y:0,z:0} → AngX=sagittal, AngY=transversal, AngZ=frontal
+      angX?:        { min: number, max: number }
+      angY?:        { min: number, max: number }
+      angZ?:        { min: number, max: number }
     }
 
     // NOTE sur les axes genou/cheville — axe {x:-1,y:0,z:0} (−X monde) :
@@ -247,21 +254,33 @@ export class MiiSkeleton {
       // Tronc
       { name: 'spine',      parent: 'hip',         child: 'torso',       junction: 'waist',       type: 'revolute',  axis: {x:1,y:0,z:0}, limits: { min: -20*DEG, max: 30*DEG } },
       { name: 'neck',       parent: 'torso',        child: 'head',        junction: 'head_ffl',    type: 'fixed' },
-      // Hanches — revolute sagittal (flex/extension) ; abduction libre (sphérique nécessiterait GenericJoint)
-      { name: 'hip_l',      parent: 'hip',          child: 'thigh_l',     junction: 'foot_l1',     type: 'revolute',  axis: {x:1,y:0,z:0}, limits: { min: -25*DEG, max: 150*DEG } },
-      { name: 'hip_r',      parent: 'hip',          child: 'thigh_r',     junction: 'foot_r1',     type: 'revolute',  axis: {x:1,y:0,z:0}, limits: { min: -25*DEG, max: 150*DEG } },
-      // Genoux — axe −X pour conserver convention angle après flip des segments
-      { name: 'knee_l',     parent: 'thigh_l',      child: 'shin_l',      junction: 'foot_l2',     type: 'revolute',  axis: {x:-1,y:0,z:0}, limits: { min: 0, max: 150*DEG } },
-      { name: 'knee_r',     parent: 'thigh_r',      child: 'shin_r',      junction: 'foot_r2',     type: 'revolute',  axis: {x:-1,y:0,z:0}, limits: { min: 0, max: 150*DEG } },
-      // Chevilles — axe −X idem
-      { name: 'ankle_l',    parent: 'shin_l',       child: 'foot_l',      junction: 'ankle_l',     type: 'revolute',  axis: {x:-1,y:0,z:0}, limits: { min: -35*DEG, max: 50*DEG } },
-      { name: 'ankle_r',    parent: 'shin_r',       child: 'foot_r',      junction: 'ankle_r',     type: 'revolute',  axis: {x:-1,y:0,z:0}, limits: { min: -35*DEG, max: 50*DEG } },
+      // Hanches — ball joint 3-DOF (GenericJoint translations verrouillées + limites raw API)
+      //   hip (Q_up) ↔ thigh_flipped (Q_up) → écart initial = 0° sur tous les axes → pas d'explosion
+      //   axis {x:1} → joint local X = monde X → AngX=sagittal, AngY=transversal, AngZ=frontal
+      { name: 'hip_l', parent: 'hip', child: 'thigh_l', junction: 'foot_l1', type: 'ball',
+        angX: { min: -25*DEG, max: 150*DEG },   // flex/extension sagittale
+        angY: { min: -40*DEG, max:  40*DEG },   // rotation interne/externe
+        angZ: { min: -45*DEG, max:  25*DEG },   // abduction/adduction frontale
+      },
+      { name: 'hip_r', parent: 'hip', child: 'thigh_r', junction: 'foot_r1', type: 'ball',
+        angX: { min: -25*DEG, max: 150*DEG },
+        angY: { min: -40*DEG, max:  40*DEG },
+        angZ: { min: -45*DEG, max:  25*DEG },
+      },
+      // Genoux — axe +X : le corps GLB fait face à -Z, donc +Z = derrière le Mii.
+      //   Rotation positive autour de +X : tibia (+Y) → +Z = flexion anatomique correcte.
+      { name: 'knee_l',     parent: 'thigh_l',      child: 'shin_l',      junction: 'foot_l2',     type: 'revolute',  axis: {x:1,y:0,z:0}, limits: { min: 0, max: 150*DEG } },
+      { name: 'knee_r',     parent: 'thigh_r',      child: 'shin_r',      junction: 'foot_r2',     type: 'revolute',  axis: {x:1,y:0,z:0}, limits: { min: 0, max: 150*DEG } },
+      // Chevilles — axe +X idem (plantarflexion = pied vers +Z = vers l'arrière)
+      { name: 'ankle_l',    parent: 'shin_l',       child: 'foot_l',      junction: 'ankle_l',     type: 'revolute',  axis: {x:1,y:0,z:0}, limits: { min: -35*DEG, max: 50*DEG } },
+      { name: 'ankle_r',    parent: 'shin_r',       child: 'foot_r',      junction: 'ankle_r',     type: 'revolute',  axis: {x:1,y:0,z:0}, limits: { min: -35*DEG, max: 50*DEG } },
       // Épaules — sphériques (orientations incompatibles pour revolute, cf. note ci-dessus)
       { name: 'shoulder_l', parent: 'torso',        child: 'upper_arm_l', junction: 'arm_l1',      type: 'spherical' },
       { name: 'shoulder_r', parent: 'torso',        child: 'upper_arm_r', junction: 'arm_r1',      type: 'spherical' },
-      // Coudes — upper_arm et fore_arm partagent Q_horizontal → revolute OK
-      { name: 'elbow_l',    parent: 'upper_arm_l',  child: 'fore_arm_l',  junction: 'arm_l2',      type: 'revolute',  axis: {x:0,y:0,z:1}, limits: { min: 0, max: 145*DEG } },
-      { name: 'elbow_r',    parent: 'upper_arm_r',  child: 'fore_arm_r',  junction: 'arm_r2',      type: 'revolute',  axis: {x:0,y:0,z:1}, limits: { min: 0, max: 145*DEG } },
+      // Coudes — bras G pointe +X → axe +Z ; bras D pointe -X → axe -Z pour symétriser.
+      //   Résultat : angle positif = avant-bras monte vers +Y sur les deux bras.
+      { name: 'elbow_l',    parent: 'upper_arm_l',  child: 'fore_arm_l',  junction: 'arm_l2',      type: 'revolute',  axis: {x:0,y:0,z:1},  limits: { min: 0, max: 145*DEG } },
+      { name: 'elbow_r',    parent: 'upper_arm_r',  child: 'fore_arm_r',  junction: 'arm_r2',      type: 'revolute',  axis: {x:0,y:0,z:-1}, limits: { min: 0, max: 145*DEG } },
     ]
 
     for (const jd of JOINTS) {
@@ -291,9 +310,30 @@ export class MiiSkeleton {
           RAPIER.JointData.spherical(pa, ca),
           parentSeg.body, childSeg.body, true
         )
+      } else if (jd.type === 'ball') {
+        // GenericJoint : translations verrouillées (= sphérique) + limites angulaires via raw API.
+        // Les deux corps ont Q_up ≈ identity → angle initial = 0° sur tous les axes
+        // → aucune impulsion corrective à la création → pas d'explosion.
+        const params = RAPIER.JointData.generic(
+          pa, ca,
+          { x: 1, y: 0, z: 0 },   // axe principal X → AngX=sagittal, AngZ=frontal
+          RAPIER.JointAxesMask.LinX | RAPIER.JointAxesMask.LinY | RAPIER.JointAxesMask.LinZ
+        )
+        joint = this.world.createImpulseJoint(params, parentSeg.body, childSeg.body, true)
+        if (joint) {
+          // RawJointAxis : AngX=3, AngY=4, AngZ=5
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const rs = (joint as any).rawSet as { jointSetLimits(h: number, ax: number, min: number, max: number): void }
+          if (jd.angX) rs.jointSetLimits(joint.handle, 3, jd.angX.min, jd.angX.max)
+          if (jd.angY) rs.jointSetLimits(joint.handle, 4, jd.angY.min, jd.angY.max)
+          if (jd.angZ) rs.jointSetLimits(joint.handle, 5, jd.angZ.min, jd.angZ.max)
+        }
       }
 
-      if (joint) this.joints.push(joint)
+      if (joint) {
+        this._joints.push(joint)
+        this.joints.set(jd.name, joint)
+      }
     }
   }
 
@@ -357,13 +397,14 @@ export class MiiSkeleton {
   }
 
   destroy(): void {
-    for (const j of this.joints) this.world.removeImpulseJoint(j, true)
+    for (const j of this._joints) this.world.removeImpulseJoint(j, true)
     for (const seg of this.segments.values()) {
       this.world.removeRigidBody(seg.body)
       seg.mesh.geometry.dispose()
       ;(seg.mesh.material as THREE.Material).dispose()
     }
     this.segments.clear()
-    this.joints.length = 0
+    this.joints.clear()
+    this._joints.length = 0
   }
 }

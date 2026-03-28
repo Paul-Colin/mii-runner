@@ -10,6 +10,8 @@ const demos: Record<string, string> = {
   '03': 'Demo 03 — Muscles & énergie',
   '04': 'Demo 04 — Morphologie T/P/M',
   '05': 'Demo 05 — Mii Loader',
+  '09': 'Demo 09 — Ragdoll Mii',
+  '10': 'Demo 10 — Muscles Mii',
 }
 
 titleEl.textContent = demos[demo] ?? `Demo ${demo}`
@@ -58,6 +60,11 @@ switch (demo) {
   case '09': {
     const { runDemo09 } = await import('./demos/demo-09-ragdoll.js')
     await runDemo09(statsEl)
+    break
+  }
+  case '10': {
+    const { runDemo10 } = await import('./demos/demo-10-muscles.js')
+    await runDemo10(statsEl)
     break
   }
 
