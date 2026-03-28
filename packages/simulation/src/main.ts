@@ -55,6 +55,11 @@ switch (demo) {
     await runDemo08(statsEl)
     break
   }
+  case '09': {
+    const { runDemo09 } = await import('./demos/demo-09-ragdoll.js')
+    await runDemo09(statsEl)
+    break
+  }
 
   default:
     statsEl.textContent = `Demo "${demo}" introuvable.`

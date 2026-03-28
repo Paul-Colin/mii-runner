@@ -12,16 +12,13 @@
 import * as THREE from 'three'
 import { MiiHeadLoader, miiDataToHex }  from './MiiHeadLoader.js'
 import { MiiBodyLoader }                from './MiiBodyLoader.js'
-import type { MiiHeadOptions }          from './MiiHeadLoader.js'
 import type { BodyStyle }               from './MiiBodyLoader.js'
 import type { MiiData }                 from './MiiData.js'
 
 // modulateType index pour les meshes de la tête FFL
 // Source : fflShaderConst.ts (mii-creator / ariankordi)
 const FFL_HAIR    = 4  // FFL_MODULATE_TYPE_SHAPE_HAIR
-const FFL_MASK    = 6  // FFL_MODULATE_TYPE_SHAPE_MASK — TOUS les traits du visage (yeux, sourcils, lèvres, etc.)
 const FFL_GLASS   = 8  // FFL_MODULATE_TYPE_SHAPE_GLASS — lunettes uniquement
-const FFL_SKIN    = [0, 2, 3] as const  // FACELINE, NOSE, FOREHEAD
 
 // ─── Options ──────────────────────────────────────────────────────────────────
 
@@ -56,6 +53,9 @@ export interface MiiInstance {
 
   /** Hex FFSD correspondant */
   hex: string
+
+  /** Group THREE.js de la tête FFL (sans le corps GLB) */
+  headGroup: THREE.Group
 
   /**
    * À appeler chaque frame (dans la boucle d'animation).
@@ -97,11 +97,11 @@ export class MiiLoader {
     this.globalScale = options.scale     ?? 0.155
 
     this.headLoader = new MiiHeadLoader(scene, {
-      apiBase:       options.apiBase,
-      texResolution: options.texResolution,
+      ...(options.apiBase       !== undefined && { apiBase:       options.apiBase }),
+      ...(options.texResolution !== undefined && { texResolution: options.texResolution }),
       // scale tête calibré pour s'aligner avec le corps wiiu (valeur mii-creator)
       scale: 0.12,
-    } satisfies MiiHeadOptions)
+    })
 
     this.bodyLoader = new MiiBodyLoader(
       options.modelsBasePath ?? '/assets/models'
@@ -129,6 +129,15 @@ export class MiiLoader {
         style:            this.bodyStyle,
       }),
     ])
+
+    // ── Scale de la tête proportionnel à la taille du Mii ───────────────────
+    // scaleHeight = formule MiiBodyLoader (height=83 → ~1.0, height=0 → 0.5)
+    // Facteur partiel : réduit les petites têtes sans sur-amplifier les grandes.
+    {
+      const scaleHeight     = data.height * 0.006015625 + 0.5
+      const headScaleFactor = (0.7 + 0.3 * scaleHeight) * 0.75
+      head.group.scale.multiplyScalar(headScaleFactor)
+    }
 
     // ── Overrides de couleur sur la tête FFL ─────────────────────────────────
     // Le GLB de l'API FFL expose geometry.userData.modulateType sur chaque mesh.
@@ -219,6 +228,6 @@ export class MiiLoader {
       body.dispose()
     }
 
-    return { root, data, hex, update, setPosition, setRotationY, placeOnGround, toJSON, dispose }
+    return { root, data, hex, headGroup: head.group, update, setPosition, setRotationY, placeOnGround, toJSON, dispose }
   }
 }

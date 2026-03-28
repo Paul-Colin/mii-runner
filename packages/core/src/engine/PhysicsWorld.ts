@@ -7,7 +7,7 @@ export interface PhysicsWorldOptions {
 
 const DEFAULT_OPTIONS: PhysicsWorldOptions = {
   gravity: { x: 0, y: -9.81, z: 0 },
-  solverIterations: 4,
+  solverIterations: 12,
 }
 
 export interface RigidBodyDesc {
@@ -53,7 +53,9 @@ export class PhysicsWorld {
 
   createGround(halfWidth = 200, halfDepth = 200): RAPIER.RigidBody {
     this.assertInitialized()
-    const bodyDesc = RAPIER.RigidBodyDesc.fixed().setTranslation(0, 0, 0)
+    // Body placé à y=-0.1 + halfHeight=0.1 → surface haute à y=0,
+    // alignée avec le sol visuel de Renderer.addGround() (mesh.position.y=-0.1, hauteur=0.2).
+    const bodyDesc = RAPIER.RigidBodyDesc.fixed().setTranslation(0, -0.1, 0)
     const body = this.world.createRigidBody(bodyDesc)
     const colliderDesc = RAPIER.ColliderDesc.cuboid(halfWidth, 0.1, halfDepth)
       .setRestitution(0.0)

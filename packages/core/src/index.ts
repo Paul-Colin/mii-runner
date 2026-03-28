@@ -45,6 +45,13 @@ export type { MiiBodyOptions, MiiBodyInstance, BodyStyle } from './character/Mii
 export { MiiLoader } from './character/MiiLoader.js'
 export type { MiiLoaderOptions, MiiInstance } from './character/MiiLoader.js'
 
+// MiiSkeleton (squelette RAPIER adapté aux dimensions réelles du GLB Mii)
+export { MiiSkeleton } from './character/MiiSkeleton.js'
+export type { MiiSegment } from './character/MiiSkeleton.js'
+
+// MiiRagdoll (physique RAPIER + visuel Mii synchronisé)
+export { MiiRagdoll } from './character/MiiRagdoll.js'
+
 // Palette de couleurs étendue Switch (100 couleurs)
 export { SWITCH_BODY_COLORS, SWITCH_BODY_COLORS_COUNT, randomSwitchColor } from './character/MiiColorPalette.js'
 
